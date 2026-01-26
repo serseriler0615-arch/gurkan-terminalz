@@ -2,106 +2,105 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-# 1. Sayfa Konfigürasyonu
-st.set_page_config(page_title="Gürkan AI Master Pro", layout="wide", initial_sidebar_state="collapsed")
+# 1. Sayfa ve Tema Ayarları
+st.set_page_config(page_title="Gürkan AI Terminal", layout="wide", initial_sidebar_state="collapsed")
 
-# Türkçe Ay Sözlüğü (Kesin Çözüm)
+# Türkçe Ay Sözlüğü
 tr_aylar = {"Jan": "Ocak", "Feb": "Şubat", "Mar": "Mart", "Apr": "Nisan", "May": "Mayıs", "Jun": "Haziran",
             "Jul": "Temmuz", "Aug": "Ağustos", "Sep": "Eylül", "Oct": "Ekim", "Nov": "Kasım", "Dec": "Aralık"}
 
 st.markdown("""
     <style>
-    .main { background-color: #0d1117; }
+    .stApp { background-color: #0d1117; }
     header {visibility: hidden;}
-    /* Siyah kutuları engellemek için arka planı şeffaflaştır */
-    .stApp { background: #0d1117; }
+    /* Siyah kutuları engellemek için grafik alanını şeffaflaştır */
+    .stAreaChart { background-color: transparent !important; border-radius: 10px; }
     div[data-testid="stMetric"] { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; }
-    .radar-card { background-color: #161b22; border-left: 4px solid #00ff88; padding: 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid #30363d; }
-    /* Asistan yorum metnini beyaz yap */
-    .asistan-yorum { color: #e6edf3; background-color: #1c2128; padding: 15px; border-radius: 10px; border: 1px solid #30363d; font-size: 15px; }
+    .radar-card { background-color: #161b22; border-left: 4px solid #00ff88; padding: 10px; border-radius: 8px; margin-bottom: 5px; border: 1px solid #30363d; }
+    .asistan-box { background-color: #1c2128; border: 1px solid #00ff88; padding: 15px; border-radius: 10px; color: #e6edf3; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. Panel Düzeni
+# 2. Üst Kontrol Paneli
 ana_sol, ana_sag = st.columns([3, 1])
 
 with ana_sol:
     c1, c2, c3 = st.columns([1.5, 1, 1])
     with c1:
-        h_input = st.text_input("🔍 Hisse Yaz:", value="ISCTR").upper().strip()
+        hisse_kod = st.text_input("🔍 Hisse:", value="ISCTR").upper().strip()
     
-    sembol = h_input if "." in h_input else h_input + ".IS"
+    sembol = hisse_kod if "." in hisse_kod else hisse_kod + ".IS"
 
     try:
-        # VERİ: Zeka için 6 aylık veri, Görsel için 20 gün
         ticker = yf.Ticker(sembol)
-        full_df = ticker.history(period="6mo", interval="1d")
+        # Zeka için 6 aylık, grafik için 20 günlük veri
+        df = ticker.history(period="6mo", interval="1d")
         
-        if not full_df.empty:
-            if isinstance(full_df.columns, pd.MultiIndex): full_df.columns = full_df.columns.get_level_values(0)
+        if not df.empty:
+            if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
             
-            # Gecikmeyi önlemek için fast_info
-            curr_price = ticker.fast_info['last_price']
-            prev_close = full_df['Close'].iloc[-2]
-            change = ((curr_price - prev_close) / prev_close) * 100
+            # Anlık Fiyat (Gecikmeyi azaltmak için)
+            son_fiyat = ticker.fast_info['last_price']
+            dunku_kapanis = df['Close'].iloc[-2]
+            yuzde_degisim = ((son_fiyat - dunku_kapanis) / dunku_kapanis) * 100
 
-            with c2: st.metric("SON FİYAT", f"{curr_price:.2f} TL")
-            with c3: st.metric("GÜNLÜK %", f"%{change:.2f}", f"{curr_price-prev_close:+.2f}")
+            with c2: st.metric("GÜNCEL FİYAT", f"{son_fiyat:.2f} TL")
+            with c3: st.metric("GÜNLÜK %", f"%{yuzde_degisim:.2f}", f"{son_fiyat-dunku_kapanis:+.2f}")
 
-            # --- GRAFİK: 20 GÜN + TÜRKÇE + SİYAHSIZ ---
-            plot_df = full_df[['Close']].tail(20).copy()
-            tr_idx = []
+            # --- TÜRKÇE VE SİYAHSIZ 20 GÜNLÜK GRAFİK ---
+            plot_df = df[['Close']].tail(20).copy()
+            tr_eks = []
             for d in plot_df.index:
-                s = d.strftime("%d %b")
-                for e, t in tr_aylar.items(): s = s.replace(e, t)
-                tr_idx.append(s)
-            plot_df.index = tr_idx
+                t = d.strftime("%d %b")
+                for e, tr in tr_aylar.items(): t = t.replace(e, tr)
+                tr_eks.append(t)
+            plot_df.index = tr_eks
             
-            st.markdown(f"📈 **{h_input} - Son 20 Günlük Trendy Görünüm**")
-            st.area_chart(plot_df, color="#00ff88", height=280)
+            st.write(f"📈 **{hisse_kod} - Son 20 Günlük Güç Göstergesi**")
+            st.area_chart(plot_df, color="#00ff88", height=250)
 
-            # --- 🧠 SUPER AI ASİSTAN MOTORU ---
-            ma20 = full_df['Close'].rolling(window=20).mean().iloc[-1]
-            ma50 = full_df['Close'].rolling(window=50).mean().iloc[-1]
-            # RSI
-            diff = full_df['Close'].diff()
+            # --- 🧠 STRATEJİ MOTORU (DeltaGenerator Hatasız) ---
+            ma20 = df['Close'].rolling(20).mean().iloc[-1]
+            ma50 = df['Close'].rolling(50).mean().iloc[-1]
+            # RSI 14
+            diff = df['Close'].diff()
             g = (diff.where(diff > 0, 0)).rolling(14).mean()
             l = (-diff.where(diff < 0, 0)).rolling(14).mean()
             rsi = 100 - (100 / (1 + (g/l))).iloc[-1]
 
-            st.markdown("### 🤖 Gürkan AI Strateji Raporu")
+            st.markdown("### 🤖 Gürkan AI Stratejik Değerlendirme")
             s1, s2, s3 = st.columns(3)
             
             with s1:
-                st.write("**RSI (GÜÇ)**")
-                if rsi > 70: st.error(f"🚨 Aşırı Alım ({rsi:.1f})")
-                elif rsi < 30: st.success(f"🔥 Aşırı Satım ({rsi:.1f})")
-                else: st.info(f"⚖️ Dengeli ({rsi:.1f})")
-            
+                st.write("**GÜÇ (RSI)**")
+                if rsi > 70: st.error(f"🔴 Aşırı Alım ({rsi:.1f})")
+                elif rsi < 35: st.success(f"🟢 Fırsat Bölgesi ({rsi:.1f})")
+                else: st.info(f"🔵 Dengeli ({rsi:.1f})")
+
             with s2:
                 st.write("**TREND (MA20)**")
-                st.success("🟢 Pozitif (Ort. Üstü)") if curr_price > ma20 else st.error("🔴 Negatif (Ort. Altı)")
-            
+                if son_fiyat > ma20: st.success("📈 Pozitif (Ort. Üstü)")
+                else: st.error("📉 Negatif (Ort. Altı)")
+
             with s3:
                 st.write("**ANA YÖN (MA50)**")
-                st.success("🚀 YÜKSELİŞ") if ma20 > ma50 else st.warning("⚠️ ZAYIF TREND")
+                if ma20 > ma50: st.success("🚀 YÜKSELİŞ TRENDİ")
+                else: st.warning("⚠️ ZAYIF GÖRÜNÜM")
 
             # Zeki Yorum Alanı
-            yorum = f"**Hisse Analizi:** {h_input} hissesi şu an {curr_price:.2f} TL seviyesinde. "
-            if curr_price > ma20 and rsi < 65:
-                yorum += "Teknik olarak 'Yükseliş Trendi' destekleniyor, RSI henüz doygunluğa ulaşmamış. Olumlu."
-            elif rsi > 70:
-                yorum += "Dikkat! RSI 70 üzerine çıkarak hissenin aşırı primlendiğini gösteriyor, düzeltme gelebilir."
-            else:
-                yorum += "Fiyat ortalamaların altında baskılanıyor. Yeni bir alım için MA20 ( {ma20:.2f} ) üzerine çıkması beklenmeli."
-            
-            st.markdown(f'<div class="asistan-yorum">{yorum}</div>', unsafe_allow_html=True)
+            st.markdown(f"""
+            <div class="asistan-box">
+                <b>Zeki Asistan Notu:</b> {hisse_kod} şu an {son_fiyat:.2f} TL seviyesinde. 
+                RSI değeri {rsi:.1f} ile {'düzeltme bekliyor' if rsi > 70 else 'güçlü duruyor'}. 
+                Kısa vadeli direnç noktası 20 günlük ortalama olan {ma20:.2f} TL olarak takip edilmelidir.
+            </div>
+            """, unsafe_allow_html=True)
 
-    except: st.error("Sembol hatası veya veri çekilemedi.")
+    except: st.error("Hisse bulunamadı veya veri çekilemiyor.")
 
 # --- SAĞ RADAR ---
 with ana_sag:
-    st.markdown("### 🛰️ AI POTANSİYEL")
+    st.markdown("### 🛰️ AI RADAR")
     radar = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "ISCTR.IS", "SASA.IS"]
     for r in radar:
         try:
