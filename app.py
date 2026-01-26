@@ -41,11 +41,11 @@ try:
     df = veri_indir(hisse_kod)
     
     if not df.empty:
-        # Günlük Değişim Hesaplama
-        son_fiyat = float(df['Close'].iloc[-1])
-        onceki_fiyat = float(df['Close'].iloc[-2])
-        degisim_tl = son_fiyat - onceki_fiyat
-        degisim_yuzde = (degisim_tl / onceki_fiyat) * 100
+       # Günlük Değişim Hesaplama
+son_fiyat = float(df['Close'].iloc[-1])
+onceki_fiyat = float(df['Close'].iloc[-2])
+degisim_tl = son_fiyat - onceki_fiyat
+degisim_yuzde = (degisim_tl / onceki_fiyat) * 100
 
         # Teknik Hesaplamalar
         delta = df['Close'].diff()
@@ -101,4 +101,5 @@ onceki_fiyat = float(df['Close'].iloc[-2]) # Bir önceki dakikanın fiyatı
         st.error("Veri çekilemedi. Kodun doğruluğunu kontrol edin.")
 except Exception as e:
     st.error(f"Hata: {e}")
+
 
