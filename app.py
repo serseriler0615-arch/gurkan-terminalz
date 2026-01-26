@@ -1,12 +1,13 @@
 import streamlit as st
 import yfinance as yf
+import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
 # Sayfa Ayarları
-st.set_page_config(page_title="BIST AI Terminal", layout="wide")
+st.set_page_config(page_title="BIST Terminal Kesin Çözüm", layout="wide", initial_sidebar_state="collapsed")
 
-# Otomatik yenilemeyi hata vermemesi için kapattık veya süresini uzattık
+# Sayfa yenileme (Hataları önlemek için kapalı kalsın veya 10 dk yapalım)
 st_autorefresh(interval=10 * 60 * 1000, key="refresh")
 
 # --- ÜST PANEL ---
@@ -16,7 +17,7 @@ if 'favoriler' not in st.session_state:
     st.session_state.favoriler = ["THYAO.IS", "EREGL.IS", "ASELS.IS", "ISCTR.IS"]
 
 with col_ara:
-    hisse_input = st.text_input("🔍 Hisse Kodu (Örn: SASA):", "").upper().strip()
+    hisse_input = st.text_input("🔍 BIST Hisse Ara (Örn: SASA):", "").upper().strip()
 
 with col_fav:
     secilen_fav = st.selectbox("⭐ Favoriler:", st.session_state.favoriler)
@@ -30,48 +31,35 @@ with col_metrik:
         data = yf.download(aktif_yfinance, period="2d", interval="1m", progress=False)
         if not data.empty:
             fiyat = float(data['Close'].iloc[-1])
-            st.metric(f"{aktif_temiz} Fiyat", f"{fiyat:.2f} TL")
+            st.metric(f"{aktif_temiz} (BIST)", f"{fiyat:.2f} TL")
     except:
-        st.write("Veri bekleniyor...")
+        st.info("Veri bekleniyor...")
 
-# --- CANLI GRAFİK (BIST ÖZEL WIDGET) ---
-def tradingview_bist_widget(ticker):
-    # Bu widget formatı BIST verileri için en kararlı olanıdır
-    tv_ticker = f"BIST:{ticker}"
+# --- CANLI GRAFİK (IFRAME YÖNTEMİ - AMERİKA'YA KAÇIŞI ENGELLER) ---
+def tradingview_iframe(ticker):
+    # TradingView'in ham chart URL'sini kullanarak widget'ın kararsızlığından kurtuluyoruz
+    chart_url = f"https://s.tradingview.com/widgetembed/?symbol=BIST%3A{ticker}&interval=D&hidesidetoolbar=1&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=light&style=1&timezone=Europe%2FIstanbul&studies_overrides=%7B%7D&overrides=%7B%7D&enabled_features=%5B%5D&disabled_features=%5B%5D&locale=tr&utm_source=www.tradingview.com&utm_medium=widget&utm_campaign=chart&utm_term=BIST%3A{ticker}"
     
-    html_code = f"""
-    <div class="tradingview-widget-container">
-      <div id="tradingview_bist"></div>
-      <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
-      <script type="text/javascript">
-      new TradingView.widget({{
-        "width": "100%",
-        "height": 550,
-        "symbol": "{tv_ticker}",
-        "interval": "D",
-        "timezone": "Europe/Istanbul",
-        "theme": "light",
-        "style": "1",
-        "locale": "tr",
-        "toolbar_bg": "#f1f3f6",
-        "enable_publishing": false,
-        "withdateranges": true,
-        "hide_side_toolbar": false,
-        "allow_symbol_change": true,
-        "watchlist": ["BIST:THYAO", "BIST:ISCTR", "BIST:EREGL", "BIST:SASA"],
-        "container_id": "tradingview_bist"
-      }});
-      </script>
-    </div>
-    """
-    components.html(html_code, height=560)
+    components.iframe(chart_url, height=500)
 
 st.divider()
-tradingview_bist_widget(aktif_temiz)
+st.subheader(f"📊 {aktif_temiz} CANLI GRAFİK")
+tradingview_iframe(aktif_temiz)
 
-# --- ALT PANEL ---
-c1, c2 = st.columns(2)
-with c1:
-    st.info(f"💡 {aktif_temiz} için teknik analiz aşağıda hazırlanıyor...")
-with c2:
-    st.link_button("📰 Google Haberler", f"https://www.google.com/search?q={aktif_temiz}+hisse+haberleri&tbm=nws", use_container_width=True)
+# --- ALT PANEL (AI SİNYAL) ---
+try:
+    if not data.empty:
+        delta = data['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rsi = 100 - (100 / (1 + (gain/loss))).iloc[-1]
+        
+        c1, c2 = st.columns(2)
+        with c1:
+            if rsi > 70: st.error(f"🚨 Sinyal: AŞIRI ALIM (RSI: {rsi:.1f})")
+            elif rsi < 30: st.success(f"🚀 Sinyal: AŞIRI SATIM (RSI: {rsi:.1f})")
+            else: st.info(f"⚖️ Sinyal: NÖTR (RSI: {rsi:.1f})")
+        with c2:
+            st.link_button("📰 Haberleri Oku", f"https://www.google.com/search?q={aktif_temiz}+hisse+haberleri&tbm=nws", use_container_width=True)
+except:
+    pass
