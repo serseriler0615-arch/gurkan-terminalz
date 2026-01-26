@@ -2,26 +2,26 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 
-# 1. Sayfa Konfigürasyonu (Sıfır Boşluk)
-st.set_page_config(page_title="Gürkan Elite AI", layout="wide", initial_sidebar_state="collapsed")
+# 1. Sayfa Konfigürasyonu (Tam Ekran ve Temiz Arayüz)
+st.set_page_config(page_title="Gürkan AI Pro", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
     <style>
-    .block-container { padding-top: 1rem !important; background-color: #0e1117; }
+    .block-container { padding-top: 1rem !important; background-color: #0d1117; }
     header {visibility: hidden;}
-    /* Metrik Kartları */
-    div[data-testid="stMetric"] { background-color: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 10px !important; }
-    /* Radar Kartları */
+    /* Metrik Kartları Tasarımı */
+    div[data-testid="stMetric"] { background-color: #161b22; border: 1px solid #30363d; border-radius: 10px; padding: 10px !important; }
+    /* Sağ Radar Kartları */
     .radar-card { 
         background-color: #161b22; border: 1px solid #30363d; border-left: 4px solid #00ff88;
-        padding: 10px; border-radius: 6px; margin-bottom: 8px;
+        padding: 12px; border-radius: 8px; margin-bottom: 10px;
     }
-    /* Yazı fontlarını küçültüp profesyonelleştirme */
-    h3, p { color: #e6edf3; font-family: 'Inter', sans-serif; }
+    /* Alt Bilgi Kutuları */
+    .status-box { background-color: #161b22; border: 1px solid #30363d; padding: 15px; border-radius: 8px; text-align: center; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. Üst Kontrol Paneli
+# 2. Üst Panel Düzeni
 ana_sol, ana_sag = st.columns([3, 1])
 
 with ana_sol:
@@ -32,7 +32,7 @@ with ana_sol:
     aktif_hisse = hisse_input if "." in hisse_input else hisse_input + ".IS"
 
     try:
-        # Analiz için 6 aylık veri
+        # Teknik analiz için veri çekme
         df = yf.download(aktif_hisse, period="6mo", interval="1d", progress=False)
         if not df.empty:
             if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
@@ -41,14 +41,14 @@ with ana_sol:
             dunku_kapanis = float(df['Close'].iloc[-2])
             degisim = ((son_fiyat - dunku_kapanis) / dunku_kapanis) * 100
             
-            with c2: st.metric("SON FİYAT", f"{son_fiyat:.2f} TL")
+            with c2: st.metric("GÜNCEL FİYAT", f"{son_fiyat:.2f} TL")
             with c3: st.metric("GÜNLÜK DEĞİŞİM", f"%{degisim:.2f}", f"{son_fiyat-dunku_kapanis:+.2f}")
 
-            # GRAFİK: Alan dolgusunu daha yumuşak yaptık
-            st.markdown(f"📊 **{hisse_input} - Teknik Görünüm**")
-            st.area_chart(df['Close'].tail(45), color="#00ff88", height=200)
+            # GRAFİK: Siyahlık yapmayan, şeffaf ve profesyonel çizgi grafik
+            st.markdown(f"📈 **{hisse_input} - Teknik Hareket (Son 45 Gün)**")
+            st.line_chart(df['Close'].tail(45), color="#00ff88", height=220)
 
-            # --- GELİŞMİŞ ANALİZ MOTORU ---
+            # --- AI STRATEJİ RAPORU (Hatasız Kodlama) ---
             delta = df['Close'].diff()
             gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
             loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -57,33 +57,32 @@ with ana_sol:
             ma50 = df['Close'].rolling(window=50).mean().iloc[-1]
 
             st.markdown("### 🤖 AI Strateji Raporu")
-            a1, a2, a3 = st.columns(3)
+            s1, s2, s3 = st.columns(3)
             
-            with a1:
-                st.write("**İndikatör (RSI)**")
-                if rsi > 70: st.error(f"⚠️ Şişmiş ({rsi:.1f})")
-                elif rsi < 35: st.success(f"🔥 Ucuz ({rsi:.1f})")
+            with s1:
+                st.markdown('<div class="status-box"><b>İndikatör (RSI)</b><br></div>', unsafe_allow_html=True)
+                if rsi > 70: st.error(f"⚠️ Aşırı Alım ({rsi:.1f})")
+                elif rsi < 35: st.success(f"🔥 Aşırı Satım ({rsi:.1f})")
                 else: st.info(f"⚖️ Normal ({rsi:.1f})")
 
-            with a2:
-                st.write("**Kısa Vade (MA20)**")
-                st.success("📈 Pozitif") if son_fiyat > ma20 else st.error("📉 Negatif")
+            with s2:
+                st.markdown('<div class="status-box"><b>Kısa Vade (MA20)</b><br></div>', unsafe_allow_html=True)
+                if son_fiyat > ma20: st.success("📈 Trend: Pozitif")
+                else: st.error("📉 Trend: Negatif")
 
-            with a3:
-                st.write("**Ana Trend (MA50)**")
-                st.success("🚀 Yükseliş") if son_fiyat > ma50 else st.warning("🐢 Yatay/Düşüş")
+            with s3:
+                st.markdown('<div class="status-box"><b>Ana Trend (MA50)</b><br></div>', unsafe_allow_html=True)
+                if son_fiyat > ma50: st.success("🚀 Görünüm: Yükseliş")
+                else: st.warning("🐢 Görünüm: Zayıf")
 
-            # Özet Cümle
-            st.markdown(f"**💡 Özet:** {hisse_input} şu an {son_fiyat:.2f} TL ile {'yükseliş trendini koruyor' if son_fiyat > ma20 else 'baskı altında gözüküyor'}. RSI değeri {rsi:.1f} ile {'alım fırsatı verebilir' if rsi < 40 else 'dikkatli olunmalı'}.")
-    except:
-        st.error("Veri hatası!")
+    except Exception as e:
+        st.error(f"Veri yüklenirken hata oluştu: {e}")
 
-# --- SAĞ TARAF: AI RADAR (YÜKSELME BEKLENEN 5 HİSSE) ---
+# --- SAĞ TARAF: AI POTANSİYEL RADARI (SABİT 5 HİSSE) ---
 with ana_sag:
     st.markdown("### 🛰️ AI POTANSİYEL")
     st.caption("Yükseliş Beklenen İlk 5")
     
-    # Gerçekten potansiyeli yüksek 5 ana hisse
     radar_list = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "ISCTR.IS", "SASA.IS"]
     
     for sembol in radar_list:
@@ -99,13 +98,13 @@ with ana_sag:
                 st.markdown(f"""
                 <div class="radar-card">
                     <div style="display:flex; justify-content:space-between;">
-                        <b style="color:#00ff88;">{ad}</b>
-                        <span style="color:{'#00ff88' if r_fark > 0 else '#ff3333'};">%{r_fark:.2f}</span>
+                        <b style="color:#00ff88; font-size:16px;">{ad}</b>
+                        <span style="color:{'#00ff88' if r_fark > 0 else '#ff3333'}; font-weight:bold;">%{r_fark:.2f}</span>
                     </div>
-                    <small style="color:#888;">AI Tahmini: <b>YÜKSELİŞ</b></small>
+                    <small style="color:#888;">AI Tahmini: <b style="color:#e6edf3;">YÜKSELİŞ</b></small>
                 </div>
                 """, unsafe_allow_html=True)
         except: continue
     
-    if st.button("🔄 Radarı Tazele", use_container_width=True):
+    if st.button("🔄 Radarı Yenile", use_container_width=True):
         st.rerun()
