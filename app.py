@@ -2,32 +2,51 @@ import streamlit as st
 import yfinance as yf
 import plotly.graph_objects as go
 import pandas as pd
+from streamlit_autorefresh import st_autorefresh # Otomatik yenileme için
 
 # Sayfa Ayarları
-st.set_page_config(page_title="Yapay Zeka Borsa Asistanı", layout="wide")
+st.set_page_config(page_title="AI Borsa Pro", layout="wide")
 
-st.title("🚀 AI Destekli Borsa Analiz & Haber Terminali")
+# 15 Dakikada Bir Otomatik Yenileme (15 * 60 * 1000 milisaniye)
+st_autorefresh(interval=15 * 60 * 1000, key="datarefresh")
 
-# Yan Panel - Arama ve Hızlı Seçim
-st.sidebar.header("🔍 Hisse Araştır")
-hisse_kod = st.sidebar.text_input("Hisse Kodu Gir (Örn: THYAO.IS):", "THYAO.IS").upper()
+st.title("🚀 AI Borsa Pro: Analiz & Favoriler")
+
+# Yan Panel
+st.sidebar.header("⭐ Favori Listem")
+if 'favoriler' not in st.session_state:
+    st.session_state.favoriler = ["THYAO.IS", "EREGL.IS", "ASELS.IS"]
+
+yeni_fav = st.sidebar.text_input("Favori Ekle (Örn: SASA.IS):").upper()
+if st.sidebar.button("Listeye Ekle"):
+    if yeni_fav and yeni_fav not in st.session_state.favoriler:
+        st.session_state.favoriler.append(yeni_fav)
+
+secilen_fav = st.sidebar.selectbox("Favorilerinden Seç:", st.session_state.favoriler)
+
+st.sidebar.divider()
+hisse_kod = st.sidebar.text_input("Manuel Hisse Ara:", secilen_fav).upper()
 
 if not hisse_kod.endswith(".IS"):
     hisse_kod += ".IS"
 
-period = st.sidebar.selectbox("Zaman Aralığı", ["1mo", "3mo", "6mo", "1y", "2y"])
-
 # Veri Çekme
-@st.cache_data
-def veri_indir(kod, per):
-    data = yf.download(kod, period=per, interval="1d")
+@st.cache_data(ttl=600) # 10 dakika önbellekte tutar
+def veri_indir(kod):
+    data = yf.download(kod, period="1y", interval="1d")
     return data
 
 try:
-    df = veri_indir(hisse_kod, period)
+    df = veri_indir(hisse_kod)
     
     if not df.empty:
-        # Teknik Hesaplamalar (RSI & MA)
+        # Günlük Değişim Hesaplama
+        son_fiyat = float(df['Close'].iloc[-1])
+        onceki_fiyat = float(df['Close'].iloc[-2])
+        degisim_tl = son_fiyat - onceki_fiyat
+        degisim_yuzde = (degisim_tl / onceki_fiyat) * 100
+
+        # Teknik Hesaplamalar
         delta = df['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
@@ -35,49 +54,50 @@ try:
         df['RSI'] = 100 - (100 / (1 + rs))
         df['MA20'] = df['Close'].rolling(window=20).mean()
 
-        # Üst Panel: Fiyat ve Tavsiye
+        # Üst Panel Metrikleri
+        m1, m2, m3 = st.columns(3)
+        m1.metric("Güncel Fiyat", f"{son_fiyat:.2f} TL")
+        m2.metric("Günlük Değişim (TL)", f"{degisim_tl:.2f} TL", delta_color="normal")
+        m3.metric("Günlük Değişim (%)", f"%{degisim_yuzde:.2f}", delta_color="normal")
+
+        st.divider()
+
         col1, col2 = st.columns([2, 1])
         
         with col1:
-            st.subheader(f"📈 {hisse_kod} Grafik")
+            st.subheader(f"📈 {hisse_kod} Teknik Grafik")
             fig = go.Figure(data=[go.Candlestick(x=df.index,
                             open=df['Open'], high=df['High'],
-                            low=df['Low'], close=df['Close'], name="Mum Grafiği")])
-            fig.add_trace(go.Scatter(x=df.index, y=df['MA20'], name="MA20 Trend", line=dict(color='orange')))
+                            low=df['Low'], close=df['Close'], name="Mum")])
+            fig.add_trace(go.Scatter(x=df.index, y=df['MA20'], name="Trend (MA20)", line=dict(color='orange')))
             st.plotly_chart(fig, use_container_width=True)
 
         with col2:
-            st.subheader("🤖 AI Analiz & Tavsiye")
-            son_fiyat = float(df['Close'].iloc[-1])
+            st.subheader("🤖 AI Teknik Yorum")
             son_rsi = float(df['RSI'].iloc[-1])
             ma20 = float(df['MA20'].iloc[-1])
             
-            st.metric("Son Fiyat", f"{son_fiyat:.2f} TL")
-            
-            # Tavsiye Mekanizması
             if son_rsi > 70:
-                st.error("⚠️ TAVSİYE: DÜŞEBİLİR (Aşırı Alım)")
-                st.write("RSI değeri 70'in üzerinde. Hisse çok yükselmiş, kar satışı gelebilir.")
+                st.error("📉 TAVSİYE: DÜŞEBİLİR")
+                st.write("Aşırı alım bölgesinde (RSI > 70). Kar satışları gelebilir.")
             elif son_rsi < 30:
-                st.success("✅ TAVSİYE: ÇIKABİLİR (Aşırı Satım)")
-                st.write("RSI değeri 30'un altında. Hisse çok düşmüş, tepki alımları başlayabilir.")
+                st.success("📈 TAVSİYE: ÇIKABİLİR")
+                st.write("Aşırı satım bölgesinde (RSI < 30). Tepki alımları beklenir.")
             else:
                 if son_fiyat > ma20:
-                    st.info("⚖️ TAVSİYE: TREND YUKARI")
-                    st.write("Fiyat 20 günlük ortalamanın üzerinde. Olumlu hava korunuyor.")
+                    st.info("⬆️ TAVSİYE: TREND YUKARI")
+                    st.write("Fiyat ortalamanın üzerinde. Yükseliş isteği sürüyor.")
                 else:
-                    st.warning("⚖️ TAVSİYE: TREND AŞAĞI")
-                    st.write("Fiyat ortalamanın altında. Baskı devam edebilir.")
+                    st.warning("⬇️ TAVSİYE: TREND AŞAĞI")
+                    st.write("Fiyat ortalamanın altında. Satış baskısı hissediliyor.")
+            
+            st.caption(f"Son Güncelleme: {pd.Timestamp.now().strftime('%H:%M:%S')}")
+            st.write("---")
+            st.subheader("📰 Haber Araştır")
+            link = f"https://www.google.com/search?q={hisse_kod}+hisse+haberleri&tbm=nws"
+            st.link_button("İnternetteki Son Haberleri Gör", link)
 
-        # Haberler Bölümü
-        st.divider()
-        st.subheader(f"📰 {hisse_kod} Hakkında Son Haberler")
-        haber_linki = f"https://www.google.com/search?q={hisse_kod}+hisse+haberleri&tbm=nws"
-        st.write(f"🌐 [Buraya tıklayarak en güncel internet haberlerini gör]({haber_linki})")
-        
     else:
-        st.error("Hisse verisi bulunamadı. Lütfen kodu doğru girdiğinizden emin olun.")
+        st.error("Veri çekilemedi. Kodun doğruluğunu kontrol edin.")
 except Exception as e:
-    st.error(f"Bir hata oluştu: {e}")
-
-st.sidebar.info("Not: Bu analizler teknik verilere dayanır, yatırım tavsiyesi değildir.")
+    st.error(f"Hata: {e}")
