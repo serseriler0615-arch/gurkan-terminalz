@@ -2,87 +2,84 @@ import streamlit as st
 import yfinance as yf
 import pandas as pd
 import time
+from datetime import datetime, timedelta
 
-# --- 1. VIP LİSANS VE GİRİŞ SİSTEMİ ---
+# --- 1. LİSANS DOĞRULAMA FONKSİYONU ---
+def validate_key(key):
+    try:
+        # Key formatı: GAI-BaslangicTimestamp-BitisTimestamp-İsim
+        parts = key.split("-")
+        if len(parts) != 4: return False
+        
+        bitis_timestamp = int(parts[2])
+        simdi = int(time.time())
+        
+        # Eğer şu anki zaman bitiş zamanından küçükse Key geçerlidir
+        if simdi < bitis_timestamp:
+            return True
+        else:
+            return "expired"
+    except:
+        return False
+
+# --- 2. GİRİŞ SİSTEMİ ---
 def check_access():
     if "access_granted" not in st.session_state:
         st.session_state["access_granted"] = False
-    if "role" not in st.session_state:
-        st.session_state["role"] = None
 
     if not st.session_state["access_granted"]:
         st.markdown("<h1 style='text-align:center; color:#00ff88;'>Gürkan AI VIP Terminal</h1>", unsafe_allow_html=True)
-        
-        # İki Sekmeli Giriş: Üye ve Admin
         tab1, tab2 = st.tabs(["💎 VIP KEY GİRİŞİ", "🔐 ADMIN GİRİŞİ"])
         
         with tab1:
-            st.markdown("<p style='color:white;'>Size özel tanımlanan VIP Lisans Anahtarını giriniz:</p>", unsafe_allow_html=True)
-            vip_key = st.text_input("Lisans Anahtarı (Key)", placeholder="GAI-XXXX-XXXX")
-            if st.button("VIP Erişimi Başlat"):
-                # Basit bir kontrol: Key 'GAI' ile başlıyorsa ve 10 karakterden uzunsa (Geliştirilebilir)
-                if vip_key.startswith("GAI-") and len(vip_key) > 10:
+            vip_key = st.text_input("VIP Lisans Anahtarınız", placeholder="GAI-XXXX-XXXX-XXXX")
+            if st.button("Erişimi Doğrula"):
+                status = validate_key(vip_key)
+                if status == True:
                     st.session_state["access_granted"] = True
                     st.session_state["role"] = "user"
                     st.rerun()
+                elif status == "expired":
+                    st.error("❌ Bu anahtarın süresi dolmuş! Lütfen yenileyin.")
                 else:
-                    st.error("Geçersiz Lisans Anahtarı! Lütfen @GurkanAI ile iletişime geçin.")
+                    st.error("❌ Geçersiz Anahtar!")
 
         with tab2:
-            admin_id = st.text_input("Yönetici ID")
-            admin_pass = st.text_input("Yönetici Şifre", type="password")
-            if st.button("Yönetici Olarak Giriş Yap"):
-                if admin_id.upper() == "GURKAN" and admin_pass == "HEDEF2024!":
+            u = st.text_input("Admin ID")
+            p = st.text_input("Admin Şifre", type="password")
+            if st.button("Yönetici Girişi"):
+                if u.upper() == "GURKAN" and p == "HEDEF2024!":
                     st.session_state["access_granted"] = True
                     st.session_state["role"] = "admin"
                     st.rerun()
-                else:
-                    st.error("Admin bilgileri hatalı!")
         return False
     return True
 
-# --- 2. ANA TERMİNAL ---
+# --- 3. ANA TERMİNAL ---
 if check_access():
     st.set_page_config(page_title="Gürkan AI VIP", layout="wide")
-    
-    # Görünürlük CSS
-    st.markdown("""
-        <style>
-        .stApp { background-color: #0d1117 !important; }
-        h1, h2, h3, p, span, label { color: #ffffff !important; }
-        .stTextInput label { color: #00ff88 !important; }
-        .radar-card { background-color: #161b22; border-left: 5px solid #00ff88; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #30363d; }
-        .admin-box { background: #1e2327; border: 1px dashed #00ff88; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
-        </style>
-    """, unsafe_allow_html=True)
 
-    # ADMİN PANELİ (SADECE ADMİN GÖRÜR)
+    # ADMIN PANELİ: SÜRELİ KEY ÜRETME
     if st.session_state["role"] == "admin":
         with st.expander("🛠️ ADMIN KEY ÜRETİM MERKEZİ"):
-            st.markdown("<div class='admin-box'>", unsafe_allow_html=True)
-            uye_ad = st.text_input("Yeni Üye Adı:")
-            if st.button("Yeni Lisans Key Oluştur"):
-                # Ürettiğin bu keyi kopyalayıp üyeye vereceksin
-                generated_key = f"GAI-{int(time.time())}-{uye_ad[:3].upper()}"
-                st.subheader("Üretilen Key (Kopyalayın):")
-                st.code(generated_key)
-                st.success(f"{uye_ad} için lisans hazır!")
-            st.markdown("</div>", unsafe_allow_html=True)
+            c1, c2 = st.columns(2)
+            with c1:
+                uye_ad = st.text_input("Üye Adı:")
+            with c2:
+                gun_sayisi = st.number_input("Lisans Süresi (Gün):", min_value=1, value=30)
+            
+            if st.button("Süreli VIP Key Oluştur"):
+                baslangic = int(time.time())
+                # Saniyeyi güne çevir: gün * 24 saat * 60 dak * 60 san
+                bitis = baslangic + (gun_sayisi * 86400)
+                new_key = f"GAI-{baslangic}-{bitis}-{uye_ad[:3].upper()}"
+                
+                st.subheader("Üretilen Süreli Key:")
+                st.code(new_key)
+                bitis_tarihi = datetime.fromtimestamp(bitis).strftime('%d/%m/%Y')
+                st.success(f"Bu anahtar {bitis_tarihi} tarihine kadar (%{gun_sayisi} gün) geçerlidir.")
 
-    # TERMİNAL İÇERİĞİ
-    sol, sag = st.columns([3, 1])
-    with sol:
-        st.title("📈 VIP Analiz Paneli")
-        hisse = st.text_input("Hisse Sembolü Girin:", value="ISCTR").upper()
-        # ... (Grafik ve Asistan Analiz Kodları Buraya Gelecek) ...
-        st.area_chart(yf.download(hisse+".IS", period="1mo", progress=False)['Close'], color="#00ff88")
-
-    with sag:
-        st.markdown("### 🚀 VIP RADAR")
-        # Radar Listesi
-        for r in ["THYAO", "ASELS", "EREGL"]:
-            st.markdown(f"<div class='radar-card'><b style='color:#00ff88;'>{r}</b><br>Potansiyel: %2+</div>", unsafe_allow_html=True)
-
-    if st.button("Çıkış Yap"):
-        st.session_state["access_granted"] = False
-        st.rerun()
+    # --- TERMİNAL İÇERİĞİ (GRAFİKLER VE RADAR) ---
+    st.title("📈 VIP Strateji Paneli")
+    # (Buraya önceki bölümlerdeki grafik ve radar kodlarını ekleyebilirsin)
+    st.info("VIP Lisansınız Aktif. İyi kazançlar!")
