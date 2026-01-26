@@ -4,23 +4,30 @@ import pandas as pd
 import time
 from datetime import datetime, timedelta
 
-# --- 1. LİSANS DOĞRULAMA FONKSİYONU ---
-def validate_key(key):
+# --- 1. AKILLI LİSANS DOĞRULAMA (AKTİVASYONLU) ---
+def validate_and_activate(input_key):
     try:
-        # Key formatı: GAI-BaslangicTimestamp-BitisTimestamp-İsim
-        parts = key.split("-")
-        if len(parts) != 4: return False
+        # Key Formatı: GAI-URETIM_ZAMANI-SURE_GUN-ISIM-AKTIVASYON_DURUMU
+        parts = input_key.split("-")
+        if len(parts) < 4: return False
         
-        bitis_timestamp = int(parts[2])
-        simdi = int(time.time())
+        uretim_zamani = int(parts[1])
+        sure_gun = int(parts[2])
         
-        # Eğer şu anki zaman bitiş zamanından küçükse Key geçerlidir
-        if simdi < bitis_timestamp:
-            return True
+        # Simülasyon: Normalde bu veriler bir veritabanında tutulur. 
+        # Streamlit üzerinde 'Aktivasyon' anını anahtarın içindeki gizli bir saniyeden okuyacağız.
+        
+        # Kullanıcı ilk kez girdiğinde bitiş tarihini hesapla
+        if "bitis_tarihi" not in st.session_state:
+            st.session_state["bitis_tarihi"] = datetime.now() + timedelta(days=sure_gun)
+            
+        simdi = datetime.now()
+        if simdi < st.session_state["bitis_tarihi"]:
+            return True, st.session_state["bitis_tarihi"]
         else:
-            return "expired"
+            return "expired", None
     except:
-        return False
+        return False, None
 
 # --- 2. GİRİŞ SİSTEMİ ---
 def check_access():
@@ -29,18 +36,21 @@ def check_access():
 
     if not st.session_state["access_granted"]:
         st.markdown("<h1 style='text-align:center; color:#00ff88;'>Gürkan AI VIP Terminal</h1>", unsafe_allow_html=True)
-        tab1, tab2 = st.tabs(["💎 VIP KEY GİRİŞİ", "🔐 ADMIN GİRİŞİ"])
+        tab1, tab2 = st.tabs(["💎 VIP KEY AKTİVASYON", "🔐 ADMIN GİRİŞİ"])
         
         with tab1:
-            vip_key = st.text_input("VIP Lisans Anahtarınız", placeholder="GAI-XXXX-XXXX-XXXX")
-            if st.button("Erişimi Doğrula"):
-                status = validate_key(vip_key)
+            st.markdown("<p style='color:white;'>Keyinizi girince süreniz <b>otomatik olarak başlayacaktır.</b></p>", unsafe_allow_html=True)
+            vip_key = st.text_input("VIP Lisans Anahtarınız", placeholder="GAI-XXXX-XXXX")
+            if st.button("Lisansı Aktive Et ve Gir"):
+                status, b_tarihi = validate_and_activate(vip_key)
                 if status == True:
                     st.session_state["access_granted"] = True
                     st.session_state["role"] = "user"
+                    st.success(f"Hoş geldiniz! Lisansınız şu tarihe kadar tanımlandı: {b_tarihi.strftime('%d/%m/%Y %H:%M')}")
+                    time.sleep(2)
                     st.rerun()
                 elif status == "expired":
-                    st.error("❌ Bu anahtarın süresi dolmuş! Lütfen yenileyin.")
+                    st.error("❌ Bu lisansın süresi dolmuş!")
                 else:
                     st.error("❌ Geçersiz Anahtar!")
 
@@ -57,29 +67,29 @@ def check_access():
 
 # --- 3. ANA TERMİNAL ---
 if check_access():
-    st.set_page_config(page_title="Gürkan AI VIP", layout="wide")
+    st.set_page_config(page_title="Gürkan AI VIP Pro", layout="wide")
 
-    # ADMIN PANELİ: SÜRELİ KEY ÜRETME
+    # ADMIN PANELİ: LİSANS ÜRETME (SÜRE BAŞLATMADAN)
     if st.session_state["role"] == "admin":
-        with st.expander("🛠️ ADMIN KEY ÜRETİM MERKEZİ"):
+        with st.expander("🛠️ ADMIN KEY MERKEZİ"):
             c1, c2 = st.columns(2)
             with c1:
                 uye_ad = st.text_input("Üye Adı:")
             with c2:
-                gun_sayisi = st.number_input("Lisans Süresi (Gün):", min_value=1, value=30)
+                lisans_suresi = st.selectbox("Lisans Paketi:", [1, 7, 30, 90, 365], format_func=lambda x: f"{x} Gün")
             
-            if st.button("Süreli VIP Key Oluştur"):
-                baslangic = int(time.time())
-                # Saniyeyi güne çevir: gün * 24 saat * 60 dak * 60 san
-                bitis = baslangic + (gun_sayisi * 86400)
-                new_key = f"GAI-{baslangic}-{bitis}-{uye_ad[:3].upper()}"
-                
-                st.subheader("Üretilen Süreli Key:")
-                st.code(new_key)
-                bitis_tarihi = datetime.fromtimestamp(bitis).strftime('%d/%m/%Y')
-                st.success(f"Bu anahtar {bitis_tarihi} tarihine kadar (%{gun_sayisi} gün) geçerlidir.")
+            if st.button("Kullanıma Hazır Key Üret"):
+                uretim = int(time.time())
+                # Yeni Key Yapısı: GAI-Üretim-Süre-İsim
+                # Bu key girildiği an süre başlayacak
+                activation_key = f"GAI-{uretim}-{lisans_suresi}-{uye_ad[:3].upper()}"
+                st.subheader("Üretilen Bekleyen Key:")
+                st.code(activation_key)
+                st.info(f"Bu key kullanıcı girdiği an {lisans_suresi} günlük süreyi başlatacak.")
 
-    # --- TERMİNAL İÇERİĞİ (GRAFİKLER VE RADAR) ---
-    st.title("📈 VIP Strateji Paneli")
-    # (Buraya önceki bölümlerdeki grafik ve radar kodlarını ekleyebilirsin)
-    st.info("VIP Lisansınız Aktif. İyi kazançlar!")
+    # TERMİNAL İÇERİĞİ (GRAFİKLER VS.)
+    st.title("📈 VIP Analiz Alanı")
+    if st.session_state["role"] == "user":
+        st.warning(f"Süreniz Devam Ediyor. Bitiş: {st.session_state['bitis_tarihi'].strftime('%d/%m/%Y')}")
+    
+    # ... (Önceki Grafik Kodların) ...
