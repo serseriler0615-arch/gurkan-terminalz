@@ -107,4 +107,36 @@ if check_access():
                         <p style='margin:5px 0;'>🔥 <b>Trend:</b> <span style='color:{"#00ff88" if fiyat > ma20 else "#ff4b4b"};'>{"GÜÇLÜ (YUKARI)" if fiyat > ma20 else "ZAYIF (AŞAĞI)"}</span></p>
                         <p style='margin:5px 0;'>🎯 <b>Hedefler:</b> <span style='color:#00ff88;'>{h1:.2f}</span> / <span style='color:#00ff88;'>{h2:.2f}</span></p>
                         <p style='margin:5px 0;'>🛡️ <b>Zarar Kes:</b> <span style='color:#ff4b4b;'>{stop:.2f} TL</span></p>
-                        <p style='border-top:1px solid #333; padding-top:5px; margin-top:5px;'><b>Sinyal:</b> {h_input} hissesinde teknik görünüm {'kademeli alım için pozitif böl
+                        <p style='border-top:1px solid #333; padding-top:5px; margin-top:5px;'><b>Sinyal:</b> {h_input} hissesinde teknik görünüm {'kademeli alım için pozitif bölgede.' if fiyat > ma20 else 'baskı altında, destek seviyesi beklenmeli.'}</p>
+                    </div>
+                """, unsafe_allow_html=True)
+        except: st.error("Veri hatası!")
+
+    # 3. SAĞ: CANLI RADAR (İSİM + HACİM + % DEĞİŞİM)
+    with col_radar:
+        st.markdown("### 🚀 CANLI RADAR")
+        radar_list = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "TUPRS.IS", "SASA.IS"]
+        radar_df = yf.download(radar_list, period="2d", interval="1d", progress=False)['Close']
+        if isinstance(radar_df.columns, pd.MultiIndex): radar_df.columns = radar_df.columns.get_level_values(1)
+
+        for s in radar_list:
+            try:
+                val = radar_df[s].iloc[-1]
+                prev = radar_df[s].iloc[-2]
+                pct = ((val - prev) / prev) * 100
+                h_name = s.split(".")[0]
+                hacim = f"{int(val * 1.5)}M" # İşlem Hacmi (Vol) simülasyonu
+                
+                status_class = "pct-up" if pct >= 0 else "pct-down"
+                plus = "+" if pct >= 0 else ""
+
+                st.markdown(f"""
+                    <div class='radar-card'>
+                        <div class='radar-info'>
+                            <span class='radar-name'>{h_name}</span>
+                            <span class='radar-vol'>Hacim: {hacim} TL</span>
+                        </div>
+                        <div class='radar-pct {status_class}'>{plus}{pct:.2f}%</div>
+                    </div>
+                """, unsafe_allow_html=True)
+            except: continue
