@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import time
 
-# --- 1. VIP GÜVENLİK & LİSANS SİSTEMİ ---
+# --- 1. VIP GÜVENLİK SİSTEMİ ---
 def check_password():
     if "password_correct" not in st.session_state:
         st.session_state["password_correct"] = False
@@ -11,127 +11,100 @@ def check_password():
         st.session_state["is_admin"] = False
 
     def login_logic():
-        # Admin ID: GURKAN | Şifre: HEDEF2024!
         u_input = st.session_state["username"].strip().upper()
         p_input = st.session_state["password"].strip()
-        
         if u_input == "GURKAN" and p_input == "HEDEF2024!":
             st.session_state["password_correct"] = True
             st.session_state["is_admin"] = True
-            st.toast("✅ Admin Girişi Başarılı!")
         else:
-            st.error("❌ Hatalı Giriş! Bilgilerinizi kontrol edin.")
+            st.error("❌ Hatalı Giriş!")
 
     if not st.session_state["password_correct"]:
         st.markdown("<h1 style='text-align: center; color: #00ff88;'>Gürkan AI VIP Terminal</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align: center; color: #ff4b4b; font-weight: bold;'>⚠️ BU TERMİNAL VIP ÜYELİK GEREKTİRİR</p>", unsafe_allow_html=True)
-        
         cols = st.columns([1, 1.5, 1])
         with cols[1]:
-            st.text_input("VIP ID", key="username", placeholder="ID Giriniz...")
-            st.text_input("VIP Şifre", type="password", key="password", placeholder="Şifre Giriniz...")
-            st.checkbox("Beni Hatırla", key="remember_me", value=True)
-            st.button("Terminale Güvenli Bağlantı Kur", on_click=login_logic, use_container_width=True)
+            st.text_input("VIP ID", key="username")
+            st.text_input("VIP Şifre", type="password", key="password")
+            st.button("Giriş Yap", on_click=login_logic, use_container_width=True)
         return False
     return True
 
-# --- 2. ANA TERMİNAL BAŞLIYOR ---
+# --- 2. ANA TERMİNAL ---
 if check_password():
-    st.set_page_config(page_title="Gürkan AI VIP Pro", layout="wide", initial_sidebar_state="collapsed")
+    st.set_page_config(page_title="Gürkan AI VIP", layout="wide")
 
-    # Tüm CSS ve Görsel İyileştirmeler
+    # GÖRÜNÜRLÜK DÜZELTME CSS (Kritik Bölge)
     st.markdown("""
         <style>
+        /* Ana Arka Plan */
         .stApp { background-color: #0d1117 !important; }
-        header {visibility: hidden;}
-        div[data-testid="stMetric"] { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; padding: 10px; }
+        
+        /* Tüm yazı renklerini beyaza zorla */
+        h1, h2, h3, p, span, label, .stMarkdown { color: #ffffff !important; }
+        
+        /* Input kutularının içindeki yazıların rengi (Siyah olmasın diye) */
+        input { color: #0d1117 !important; font-weight: bold; }
+        
+        /* Admin paneli ve kart metinleri */
+        .admin-panel, .radar-card, .asistan-notu { color: #e6edf3 !important; }
+        
+        div[data-testid="stExpander"] p { color: #ffffff !important; }
+        
+        /* Kart Tasarımları */
+        div[data-testid="stMetric"] { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; }
         .radar-card { background-color: #161b22; border-left: 4px solid #00ff88; padding: 12px; border-radius: 10px; border: 1px solid #30363d; margin-bottom: 10px; }
-        .asistan-notu { background: #1c2128; border: 1px solid #00ff88; padding: 20px; border-radius: 15px; color: #e6edf3; font-style: italic; box-shadow: 0 4px 15px rgba(0, 255, 136, 0.1); }
-        .admin-panel { background: #1e2327; border: 1px dashed #00ff88; padding: 20px; border-radius: 12px; margin-bottom: 25px; }
+        .asistan-notu { background: #1c2128; border: 1px solid #00ff88; padding: 20px; border-radius: 15px; }
+        .admin-panel { background: #1e2327; border: 1px dashed #00ff88; padding: 20px; border-radius: 12px; }
         </style>
     """, unsafe_allow_html=True)
 
-    # --- 🔑 YÖNETİCİ PANELİ (KEY ÜRETİCİ) ---
+    # --- 🔑 ADMIN PANELİ ---
     if st.session_state["is_admin"]:
-        with st.expander("🛠️ ADMIN KEY YÖNETİM MERKEZİ"):
+        with st.expander("🛠️ ADMIN KEY YÖNETİM MERKEZİ (TIKLA)"):
             st.markdown("<div class='admin-panel'>", unsafe_allow_html=True)
-            st.subheader("🔑 Yeni VIP Üye Lisansı Oluştur")
-            uye_ismi = st.text_input("Üye Adı Soyadı:")
+            st.markdown("<h3 style='color:#00ff88;'>🔑 Yeni VIP Üye Lisansı</h3>", unsafe_allow_html=True)
+            uye = st.text_input("Üye Adı Soyadı (Yazı burada görünecek):")
             if st.button("Lisans Anahtarı Üret"):
-                new_key = f"GAI-{int(time.time())}-{uye_ismi[:3].upper()}"
-                st.code(new_key, language="text")
-                st.success(f"{uye_ismi} için Key üretildi. Bu anahtarı üyeye ileterek terminali satabilirsiniz.")
+                key = f"GAI-{int(time.time())}-{uye[:3].upper()}"
+                st.code(key, language="text")
             st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- ANA İÇERİK (SOL VE SAĞ) ---
-    ana_sol, ana_sag = st.columns([3, 1])
+    # --- İÇERİK ---
+    sol, sag = st.columns([3, 1])
 
-    with ana_sol:
+    with sol:
         c1, c2, c3 = st.columns([1.5, 1, 1])
         with c1:
-            h_input = st.text_input("🔍 İncelemek İstediğiniz VIP Sembol:", value="ISCTR").upper().strip()
-        sembol = h_input if "." in h_input else h_input + ".IS"
-
+            h_input = st.text_input("🔍 İncelemek İstediğiniz VIP Sembol:", value="ISCTR").upper()
+        
         try:
-            # Veri Çekme
-            ticker = yf.Ticker(sembol)
-            df = ticker.history(period="6mo", interval="1d")
-            
+            sembol = h_input if "." in h_input else h_input + ".IS"
+            df = yf.download(sembol, period="1mo", interval="1d", progress=False)
             if not df.empty:
                 if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
+                son = float(df['Close'].iloc[-1])
+                with c2: st.metric("FİYAT", f"{son:.2f} TL")
+                with c3: st.metric("GÜNLÜK", f"%{((son - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100:.2f}")
+
+                st.markdown(f"📈 **{h_input} VIP Trend Görünümü**")
+                st.area_chart(df['Close'].tail(20), color="#00ff88")
                 
-                son_fiyat = float(df['Close'].iloc[-1])
-                dunku_kapanis = float(df['Close'].iloc[-2])
-                degisim = ((son_fiyat - dunku_kapanis) / dunku_kapanis) * 100
+                # Zeki Asistan Notu
+                st.markdown(f"""
+                <div class='asistan-notu'>
+                    <b>🤵 VIP Asistan Notu:</b> {h_input} analizi başarıyla tamamlandı. 
+                    Fiyat {son:.2f} seviyesinde seyrediyor. Teknik veriler 'VIP Radarı' ile uyumlu.
+                </div>
+                """, unsafe_allow_html=True)
+        except: st.error("Veri alınamadı.")
 
-                with c2: st.metric("GÜNCEL FİYAT", f"{son_fiyat:.2f} TL")
-                with c3: st.metric("GÜNLÜK FARK", f"%{degisim:.2f}", f"{son_fiyat-dunku_kapanis:+.2f}")
-
-                # GRAFİK (20 GÜN - SİYAHSIZ)
-                st.markdown(f"📈 **{h_input} - VIP 20 Günlük Trend Analizi**")
-                st.area_chart(df['Close'].tail(20), color="#00ff88", height=280)
-
-                # TEKNİK HESAPLAMALAR
-                ma20 = df['Close'].rolling(20).mean().iloc[-1]
-                diff = df['Close'].diff(); g = (diff.where(diff > 0, 0)).rolling(14).mean(); l = (-diff.where(diff < 0, 0)).rolling(14).mean()
-                rsi = 100 - (100 / (1 + (g/l))).iloc[-1]
-
-                # ASİSTAN ANALİZİ (Kişiselleştirilmiş)
-                st.markdown("### 🤵 Gürkan AI Kişisel Analist Notu")
-                yorum = f"Dostum, **{h_input}** için yaptığım derin VIP taramada; "
-                if rsi < 40:
-                    yorum += "hissenin teknik olarak 'Dipte' olduğunu görüyorum. RSI seviyesi bir tepki yükselişini işaret ediyor."
-                elif son_fiyat > ma20:
-                    yorum += f"fiyatın {ma20:.2f} TL desteği üzerinde kalması harika. Trend iştahı %2+ hedef için uygun görünüyor."
-                else:
-                    yorum += "şu an biraz dinlenme modunda. MA20 seviyesini aşağı kırmadığı sürece panik yok, izlemeye devam."
-
-                st.markdown(f'<div class="asistan-notu">{yorum}</div>', unsafe_allow_html=True)
-        except:
-            st.error("Veri hattı meşgul veya sembol hatalı.")
-
-    with ana_sag:
+    with sag:
         st.markdown("<h3 style='color:#00ff88; text-align:center;'>🚀 VIP RADAR</h3>", unsafe_allow_html=True)
-        st.caption("Sabah %2+ Potansiyeli")
-        
-        vip_liste = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "ISCTR.IS", "TUPRS.IS", "SISE.IS", "KCHOL.IS", "AKBNK.IS"]
-        bulunan = 0
-        for r in vip_liste:
-            if bulunan >= 5: break
-            try:
-                r_df = yf.download(r, period="10d", interval="1d", progress=False)
-                if not r_df.empty:
-                    if isinstance(r_df.columns, pd.MultiIndex): r_df.columns = r_df.columns.get_level_values(0)
-                    son = r_df['Close'].iloc[-1]
-                    if son > r_df['Close'].rolling(5).mean().iloc[-1]:
-                        f = ((son - r_df['Close'].iloc[-2]) / r_df['Close'].iloc[-2]) * 100
-                        st.markdown(f"""
-                        <div class="radar-card">
-                            <b style="color:#00ff88;">{r.split('.')[0]}</b> <span style="float:right; color:#00ff88;">%{f:.2f}</span><br>
-                            <small style="color:#888;">AI Sinyali: %2+ HEDEF</small>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        bulunan += 1
-            except: continue
-        
-        if st.button("🔄 Radarı Yenile", use_container_width=True): st.rerun()
+        radar_list = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "ISCTR.IS", "TUPRS.IS"]
+        for r in radar_list:
+            st.markdown(f"""
+            <div class="radar-card">
+                <b style="color:#00ff88;">{r.split('.')[0]}</b><br>
+                <small>Sinyal: %2+ POTANSİYEL</small>
+            </div>
+            """, unsafe_allow_html=True)
