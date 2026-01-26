@@ -4,82 +4,84 @@ import pandas as pd
 from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
-# Sayfa Ayarları - Boşlukları azaltmak için padding ayarı
-st.set_page_config(page_title="AI Terminal Compact", layout="wide", initial_sidebar_state="collapsed")
+# Sayfa Ayarları - Boşlukları minimize etme
+st.set_page_config(page_title="AI Terminal", layout="wide", initial_sidebar_state="collapsed")
 
 # 1 Dakikada Bir Yenileme
 st_autorefresh(interval=60 * 1000, key="datarefresh")
 
-# Ekranın en üstündeki boşluğu silmek için CSS
+# Üst Boşluğu Kapatan CSS ve Stil Düzenlemesi
 st.markdown("""
     <style>
-    .reportview-container .main .block-container{ padding-top: 1rem; padding-bottom: 1rem; }
-    .stMetric { background-color: #f0f2f6; padding: 5px; border-radius: 5px; }
+    .block-container { padding-top: 1rem; padding-bottom: 0rem; }
+    div[data-testid="stMetricValue"] { font-size: 24px; }
     </style>
-    """, unsafe_allow_stdio=True)
+    """, unsafe_allow_html=True) # Hatalı yer burasıydı, düzeltildi.
 
-# --- ÜST PANEL (Arama ve Favoriler Yan Yana) ---
-col1, col2, col3 = st.columns([1, 1, 1.5])
+# --- ÜST PANEL (Kompakt Arama ve Favoriler) ---
+col_ara, col_fav, col_metrik = st.columns([1, 1, 1])
 
-with col1:
-    hisse_ara = st.text_input("🔍 Hisse Ara:", "THYAO", key="search").upper()
+with col_ara:
+    hisse_ara = st.text_input("🔍 Hisse Ara:", "THYAO").upper()
     if not hisse_ara.endswith(".IS") and "." not in hisse_ara:
         aktif_hisse = hisse_ara + ".IS"
     else:
         aktif_hisse = hisse_ara
 
-with col2:
+with col_fav:
     if 'favoriler' not in st.session_state:
         st.session_state.favoriler = ["THYAO.IS", "EREGL.IS", "ASELS.IS"]
     secilen_fav = st.selectbox("⭐ Favoriler:", st.session_state.favoriler)
-    if st.button("Seçileni Aç"): aktif_hisse = secilen_fav
+    # Eğer kutuda bir şey arandıysa onu, aranmadıysa favoriyi seç
+    hisse_final = aktif_hisse if hisse_ara != "THYAO" else secilen_fav
 
-with col3:
-    # Anlık Analiz Özeti (Kompakt Metrik)
+with col_metrik:
     try:
-        data = yf.download(aktif_hisse, period="2d", interval="1m")
+        data = yf.download(hisse_final, period="2d", interval="1m")
         if not data.empty:
-            son_fiyat = float(data['Close'].iloc[-1])
-            onceki_kapanis = float(data['Close'].iloc[-2])
-            fark = son_fiyat - onceki_kapanis
-            st.metric(f"{aktif_hisse}", f"{son_fiyat:.2f} TL", f"{fark:.2f} TL")
+            fiyat = data['Close'].iloc[-1]
+            degisim = fiyat - data['Close'].iloc[-2]
+            st.metric(f"{hisse_final}", f"{fiyat:.2f} TL", f"{degisim:.2f} TL")
     except:
-        st.write("Veri bekleniyor...")
+        st.write("Veri alınıyor...")
 
-# --- CANLI GRAFİK (Orta Bölüm) ---
+# --- CANLI GRAFİK (Ekranın Büyük Kısmı) ---
 def tradingview_widget(symbol):
     tv_symbol = symbol.replace(".IS", "")
     html_code = f"""
-    <div style="height:450px; width:100%;">
-      <div id="tradingview_chart" style="height:100%; width:100%;"></div>
+    <div style="height:420px; width:100%;">
+      <div id="tv_chart" style="height:100%; width:100%;"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
       new TradingView.widget({{
         "autosize": true, "symbol": "BIST:{tv_symbol}", "interval": "1",
         "timezone": "Europe/Istanbul", "theme": "light", "style": "1",
-        "locale": "tr", "container_id": "tradingview_chart", "hide_top_toolbar": false
+        "locale": "tr", "container_id": "tv_chart", "hide_side_toolbar": true
       }});
       </script>
     </div>
     """
-    components.html(html_code, height=460)
+    components.html(html_code, height=430)
 
-tradingview_widget(aktif_hisse)
+tradingview_widget(hisse_final)
 
-# --- ALT PANEL (Haberler ve AI Tavsiyesi) ---
-c1, c2 = st.columns(2)
+# --- ALT PANEL (Hızlı Analiz ve Haberler) ---
+c1, c2 = st.columns([1, 1])
+
 with c1:
-    # Hızlı AI Sinyali
     try:
+        # RSI Sinyali
         delta = data['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rsi = 100 - (100 / (1 + (gain/loss))).iloc[-1]
+        
         if rsi > 70: st.error(f"🚨 Sinyal: DÜŞEBİLİR (RSI: {rsi:.1f})")
         elif rsi < 30: st.success(f"🚀 Sinyal: ÇIKABİLİR (RSI: {rsi:.1f})")
         else: st.info(f"⚖️ Sinyal: NÖTR (RSI: {rsi:.1f})")
-    except: pass
+    except:
+        st.write("Analiz hazırlanıyor...")
 
 with c2:
-    link = f"https://www.google.com/search?q={aktif_hisse}+haberleri&tbm=nws"
-    st.link_button("📰 Son Haberleri Oku", link, use_container_width=True)
+    link = f"https://www.google.com/search?q={hisse_final}+haberleri&tbm=nws"
+    st.link_button("📰 Son Haberleri Gör", link, use_container_width=True)
