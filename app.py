@@ -3,116 +3,86 @@ import yfinance as yf
 import pandas as pd
 import time
 
-# --- 1. VIP GİRİŞ SİSTEMİ ---
-def check_password():
-    if "password_correct" not in st.session_state:
-        st.session_state["password_correct"] = False
-    
-    def login_logic():
-        # ID: GURKAN | Şifre: HEDEF2024!
-        u = st.session_state["username"].strip().upper()
-        p = st.session_state["password"].strip()
-        if u == "GURKAN" and p == "HEDEF2024!":
-            st.session_state["password_correct"] = True
-            st.session_state["is_admin"] = True
-        else:
-            st.error("❌ Hatalı ID veya Şifre!")
+# --- 1. VIP LİSANS VE GİRİŞ SİSTEMİ ---
+def check_access():
+    if "access_granted" not in st.session_state:
+        st.session_state["access_granted"] = False
+    if "role" not in st.session_state:
+        st.session_state["role"] = None
 
-    if not st.session_state["password_correct"]:
-        st.markdown("<h1 style='text-align:center; color:#00ff88 !important;'>Gürkan AI VIP Terminal</h1>", unsafe_allow_html=True)
-        st.markdown("<p style='text-align:center; color:white !important;'>⚠️ VIP Üyelik Gereklidir</p>", unsafe_allow_html=True)
+    if not st.session_state["access_granted"]:
+        st.markdown("<h1 style='text-align:center; color:#00ff88;'>Gürkan AI VIP Terminal</h1>", unsafe_allow_html=True)
         
-        cols = st.columns([1, 1.5, 1])
-        with cols[1]:
-            st.text_input("VIP ID", key="username")
-            st.text_input("VIP Şifre", type="password", key="password")
-            st.checkbox("Beni Hatırla", key="remember_me", value=True)
-            st.button("Giriş Yap", on_click=login_logic, use_container_width=True)
+        # İki Sekmeli Giriş: Üye ve Admin
+        tab1, tab2 = st.tabs(["💎 VIP KEY GİRİŞİ", "🔐 ADMIN GİRİŞİ"])
+        
+        with tab1:
+            st.markdown("<p style='color:white;'>Size özel tanımlanan VIP Lisans Anahtarını giriniz:</p>", unsafe_allow_html=True)
+            vip_key = st.text_input("Lisans Anahtarı (Key)", placeholder="GAI-XXXX-XXXX")
+            if st.button("VIP Erişimi Başlat"):
+                # Basit bir kontrol: Key 'GAI' ile başlıyorsa ve 10 karakterden uzunsa (Geliştirilebilir)
+                if vip_key.startswith("GAI-") and len(vip_key) > 10:
+                    st.session_state["access_granted"] = True
+                    st.session_state["role"] = "user"
+                    st.rerun()
+                else:
+                    st.error("Geçersiz Lisans Anahtarı! Lütfen @GurkanAI ile iletişime geçin.")
+
+        with tab2:
+            admin_id = st.text_input("Yönetici ID")
+            admin_pass = st.text_input("Yönetici Şifre", type="password")
+            if st.button("Yönetici Olarak Giriş Yap"):
+                if admin_id.upper() == "GURKAN" and admin_pass == "HEDEF2024!":
+                    st.session_state["access_granted"] = True
+                    st.session_state["role"] = "admin"
+                    st.rerun()
+                else:
+                    st.error("Admin bilgileri hatalı!")
         return False
     return True
 
 # --- 2. ANA TERMİNAL ---
-if check_password():
+if check_access():
     st.set_page_config(page_title="Gürkan AI VIP", layout="wide")
-
-    # GÖRÜNÜRLÜK VE RENK ZORLAMA (CSS)
+    
+    # Görünürlük CSS
     st.markdown("""
         <style>
-        /* Arka planı simsiyah yap */
         .stApp { background-color: #0d1117 !important; }
-        
-        /* HER ŞEYİ BEYAZ YAP (Zorunlu) */
-        h1, h2, h3, p, span, label, li, .stMarkdown, div { color: #ffffff !important; }
-        
-        /* Input kutularının başlıklarını görünür yap */
-        .stTextInput label, .stSelectbox label { color: #00ff88 !important; font-size: 16px !important; font-weight: bold !important; }
-        
-        /* Input kutusunun içindeki yazıyı siyah yap (Okunması için) */
-        input { color: #000000 !important; background-color: #ffffff !important; font-weight: bold !important; }
-        
-        /* Admin Paneli ve Kartlar */
-        .admin-box { background-color: #1e2327 !important; border: 2px dashed #00ff88 !important; padding: 20px; border-radius: 15px; margin-bottom: 20px; }
-        .radar-card { background-color: #161b22 !important; border-left: 5px solid #00ff88 !important; border: 1px solid #30363d; padding: 15px; border-radius: 12px; margin-bottom: 12px; }
-        .asistan-box { background: #1c2128 !important; border: 1px solid #00ff88 !important; padding: 20px; border-radius: 15px; }
-        
-        /* Metriklerin içindeki siyahlığı temizle */
-        div[data-testid="stMetricValue"] > div { color: #00ff88 !important; }
-        div[data-testid="stMetricLabel"] > div { color: #ffffff !important; }
+        h1, h2, h3, p, span, label { color: #ffffff !important; }
+        .stTextInput label { color: #00ff88 !important; }
+        .radar-card { background-color: #161b22; border-left: 5px solid #00ff88; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #30363d; }
+        .admin-box { background: #1e2327; border: 1px dashed #00ff88; padding: 20px; border-radius: 12px; margin-bottom: 20px; }
         </style>
     """, unsafe_allow_html=True)
 
-    # --- 🔑 ADMIN PANELİ ---
-    if st.session_state.get("is_admin"):
-        with st.expander("🛠️ ADMIN KEY YÖNETİM MERKEZİ"):
+    # ADMİN PANELİ (SADECE ADMİN GÖRÜR)
+    if st.session_state["role"] == "admin":
+        with st.expander("🛠️ ADMIN KEY ÜRETİM MERKEZİ"):
             st.markdown("<div class='admin-box'>", unsafe_allow_html=True)
-            st.markdown("<h3 style='color:#00ff88 !important;'>Yeni Lisans Key Oluştur</h3>", unsafe_allow_html=True)
-            uye_ad = st.text_input("Üye Adı Soyadı:")
-            if st.button("VIP Key Üret"):
-                k = f"GAI-{int(time.time())}-{uye_ad[:3].upper()}"
-                st.code(k)
-                st.success(f"{uye_ad} için anahtar üretildi.")
+            uye_ad = st.text_input("Yeni Üye Adı:")
+            if st.button("Yeni Lisans Key Oluştur"):
+                # Ürettiğin bu keyi kopyalayıp üyeye vereceksin
+                generated_key = f"GAI-{int(time.time())}-{uye_ad[:3].upper()}"
+                st.subheader("Üretilen Key (Kopyalayın):")
+                st.code(generated_key)
+                st.success(f"{uye_ad} için lisans hazır!")
             st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- ANA İÇERİK ---
-    ana_sol, ana_sag = st.columns([3, 1])
+    # TERMİNAL İÇERİĞİ
+    sol, sag = st.columns([3, 1])
+    with sol:
+        st.title("📈 VIP Analiz Paneli")
+        hisse = st.text_input("Hisse Sembolü Girin:", value="ISCTR").upper()
+        # ... (Grafik ve Asistan Analiz Kodları Buraya Gelecek) ...
+        st.area_chart(yf.download(hisse+".IS", period="1mo", progress=False)['Close'], color="#00ff88")
 
-    with ana_sol:
-        c1, c2, c3 = st.columns([1.5, 1, 1])
-        with c1:
-            hisse = st.text_input("🔍 VIP Sembol Sorgula (Örn: THYAO):", value="ISCTR").upper()
-        
-        try:
-            sembol = hisse if "." in hisse else hisse + ".IS"
-            df = yf.download(sembol, period="1mo", interval="1d", progress=False)
-            if not df.empty:
-                if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-                fiyat = float(df['Close'].iloc[-1])
-                
-                with c2: st.metric("GÜNCEL FİYAT", f"{fiyat:.2f} TL")
-                with c3: st.metric("GÜNLÜK", f"%{((fiyat - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100:.2f}")
+    with sag:
+        st.markdown("### 🚀 VIP RADAR")
+        # Radar Listesi
+        for r in ["THYAO", "ASELS", "EREGL"]:
+            st.markdown(f"<div class='radar-card'><b style='color:#00ff88;'>{r}</b><br>Potansiyel: %2+</div>", unsafe_allow_html=True)
 
-                st.markdown(f"📈 **{hisse} VIP Trend Analizi**")
-                st.area_chart(df['Close'].tail(20), color="#00ff88")
-                
-                # ZEKİ ASİSTAN
-                st.markdown(f"""
-                <div class='asistan-box'>
-                    <b style='color:#00ff88 !important;'>🤵 Zeki Asistan Notu:</b><br>
-                    {hisse} şu an {fiyat:.2f} TL seviyesinde. VIP Radara göre teknik görünüm güçleniyor. 
-                    Stratejini 'Bekle-Gör' yerine 'Kademeli Alım' olarak güncelleyebilirsin.
-                </div>
-                """, unsafe_allow_html=True)
-        except: st.error("Veri çekilemedi.")
-
-    with ana_sag:
-        st.markdown("<h3 style='color:#00ff88 !important; text-align:center;'>🚀 VIP RADAR</h3>", unsafe_allow_html=True)
-        radar_list = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "ISCTR.IS", "SASA.IS"]
-        for r in radar_list:
-            st.markdown(f"""
-            <div class="radar-card">
-                <b style="color:#00ff88 !important;">{r.split('.')[0]}</b><br>
-                <span style="color:white !important;">Sinyal: %2+ POTANSİYEL</span>
-            </div>
-            """, unsafe_allow_html=True)
-        
-        if st.button("🔄 Radarı Güncelle", use_container_width=True): st.rerun()
+    if st.button("Çıkış Yap"):
+        st.session_state["access_granted"] = False
+        st.rerun()
