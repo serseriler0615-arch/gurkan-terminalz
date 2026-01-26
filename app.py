@@ -5,9 +5,9 @@ from streamlit_autorefresh import st_autorefresh
 import streamlit.components.v1 as components
 
 # Sayfa Ayarları
-st.set_page_config(page_title="AI Borsa Terminali", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="BIST Terminal", layout="wide", initial_sidebar_state="collapsed")
 
-# 2 Dakikada Bir Otomatik Yenileme
+# Yenileme
 st_autorefresh(interval=2 * 60 * 1000, key="datarefresh")
 
 # --- ÜST PANEL ---
@@ -22,9 +22,8 @@ with col_ara:
 with col_fav:
     secilen_fav = st.selectbox("⭐ Favoriler:", st.session_state.favoriler)
 
-# Hisse Belirleme Mantığı
+# Hisse Belirleme
 if hisse_input:
-    # Kullanıcı ne girerse girsin sadece kodu alıp .IS ekliyoruz
     aktif_temiz = hisse_input.split(".")[0]
     aktif_yfinance = aktif_temiz + ".IS"
 else:
@@ -33,29 +32,28 @@ else:
 
 with col_metrik:
     try:
-        # Veri çekme - yfinance (15dk gecikmeli analiz için)
         data = yf.download(aktif_yfinance, period="2d", interval="1m", progress=False)
         if not data.empty:
             fiyat = float(data['Close'].iloc[-1])
-            degisim = ((fiyat - data['Close'].iloc[-2]) / data['Close'].iloc[-2]) * 100
-            st.metric(f"{aktif_temiz} (BIST)", f"{fiyat:.2f} TL", f"%{degisim:.2f}")
+            st.metric(f"{aktif_temiz}", f"{fiyat:.2f} TL")
     except:
-        st.info("Fiyat verisi bekleniyor...")
+        st.info("Veri bekleniyor...")
 
-# --- CANLI GRAFİK (TRADINGVIEW - BIST ZORUNLU MOD) ---
+# --- CANLI GRAFİK (TAM BIST FORMATI) ---
 def tradingview_widget(ticker):
-    # Amerika borsasına gitmemesi için BIST: ön ekini kesinleştiriyoruz
+    # BURASI ÇOK ÖNEMLİ: Sembolü "BIST:THYAO" formatına kesin olarak zorluyoruz.
     tv_ticker = f"BIST:{ticker}"
     
     html_code = f"""
-    <div id="tradingview_outer" style="height:500px; width:100%;">
-      <div id="tv_chart_logic" style="height:100%; width:100%;"></div>
+    <div class="tradingview-widget-container">
+      <div id="tradingview_bist"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
       new TradingView.widget({{
-        "autosize": true,
+        "width": "100%",
+        "height": 500,
         "symbol": "{tv_ticker}",
-        "interval": "1",
+        "interval": "D",
         "timezone": "Europe/Istanbul",
         "theme": "light",
         "style": "1",
@@ -63,18 +61,18 @@ def tradingview_widget(ticker):
         "toolbar_bg": "#f1f3f6",
         "enable_publishing": false,
         "allow_symbol_change": true,
-        "container_id": "tv_chart_logic"
+        "container_id": "tradingview_bist"
       }});
       </script>
     </div>
     """
-    # Hata veren 'key' parametresini buradan kaldırdım veya statik yaptım
-    components.html(html_code, height=510)
+    # Streamlit'in bileşeni her seferinde yeniden yüklemesi için basit bir trick
+    st.components.v1.html(html_code, height=520)
 
 st.divider()
 tradingview_widget(aktif_temiz)
 
-# --- ALT PANEL (AI SİNYAL) ---
+# --- ALT PANEL ---
 try:
     if not data.empty:
         delta = data['Close'].diff()
@@ -88,6 +86,6 @@ try:
             elif rsi < 30: st.success(f"🚀 Sinyal: ÇIKABİLİR (RSI: {rsi:.1f})")
             else: st.info(f"⚖️ Sinyal: NÖTR (RSI: {rsi:.1f})")
         with c2:
-            st.link_button("📰 Haberleri Oku", f"https://www.google.com/search?q={aktif_temiz}+hisse+haberleri&tbm=nws", use_container_width=True)
+            st.link_button("📰 Haberler", f"https://www.google.com/search?q={aktif_temiz}+hisse+haberleri&tbm=nws", use_container_width=True)
 except:
-    st.write("Analiz verisi bekleniyor...")
+    pass
