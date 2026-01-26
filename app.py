@@ -15,10 +15,8 @@ def validate_key(key_input):
         simdi = datetime.now()
         if simdi < st.session_state["bitis_tarihi"]:
             return True, st.session_state["bitis_tarihi"]
-        else:
-            return "expired", None
-    except:
-        return False, None
+        else: return "expired", None
+    except: return False, None
 
 # --- 2. GİRİŞ KONTROLÜ ---
 if "access_granted" not in st.session_state:
@@ -26,31 +24,19 @@ if "access_granted" not in st.session_state:
 
 if not st.session_state["access_granted"]:
     st.set_page_config(page_title="VIP Giriş", layout="centered")
-    
-    # GİRİŞ EKRANI İÇİN ÖZEL BEYAZ YAZI CSS
-    st.markdown("""
-        <style>
-        .stApp { background-color: #0d1117 !important; }
-        h1, h2, h3, p, span, label { color: #ffffff !important; font-weight: bold !important; }
-        .stTextInput input { color: #000000 !important; background-color: #ffffff !important; }
-        </style>
-    """, unsafe_allow_html=True)
-
+    st.markdown("<style>.stApp { background-color: #0d1117 !important; } h1, h2, h3, p, span, label { color: #ffffff !important; font-weight: bold !important; }</style>", unsafe_allow_html=True)
     st.markdown("<h1 style='text-align:center;'>Gürkan AI VIP Terminal</h1>", unsafe_allow_html=True)
-    tab1, tab2 = st.tabs(["💎 VIP KEY AKTİVASYON", "🔐 ADMIN GİRİŞİ"])
     
+    tab1, tab2 = st.tabs(["💎 VIP KEY AKTİVASYON", "🔐 ADMIN GİRİŞİ"])
     with tab1:
         v_key = st.text_input("VIP Lisans Anahtarınız", placeholder="GAI-XXXX-XXXX")
-        st.checkbox("Beni Hatırla", key="remember_me", value=True)
         if st.button("Sistemi Aktive Et"):
             status, bitis = validate_key(v_key)
             if status == True:
                 st.session_state["access_granted"] = True
                 st.session_state["role"] = "user"
                 st.rerun()
-            else:
-                st.error("Key Geçersiz veya Süresi Dolmuş!")
-    
+            else: st.error("Key Geçersiz!")
     with tab2:
         u = st.text_input("Yönetici ID")
         p = st.text_input("Yönetici Şifre", type="password")
@@ -61,71 +47,79 @@ if not st.session_state["access_granted"]:
                 st.rerun()
     st.stop()
 
-# --- 3. ANA TERMİNAL (BÜTÜN YAZILAR BEYAZA ZORLANDI) ---
+# --- 3. ANA TERMİNAL ---
 st.set_page_config(page_title="Gürkan AI VIP Pro", layout="wide")
 
+# OKUNABİLİRLİK CSS
 st.markdown("""
     <style>
-    /* Ana Arka Plan */
     .stApp { background-color: #0d1117 !important; }
-    
-    /* TÜM YAZILARI BEYAZ YAP (Önemli: Burası her şeyi okutur) */
-    h1, h2, h3, p, span, label, .stMarkdown, .stMetric label {
-        color: #ffffff !important;
-        font-weight: 600 !important;
-    }
-    
-    /* Input kutularının başlıklarını Neon Yeşil Yap */
+    h1, h2, h3, p, span, label, .stMarkdown { color: #ffffff !important; font-weight: 600 !important; }
     .stTextInput label { color: #00ff88 !important; }
-    
-    /* Metrik Değerleri (Fiyatlar) */
     div[data-testid="stMetricValue"] { color: #00ff88 !important; }
-    
-    /* Kartlar ve Kutular */
+    .asistan-box { background: #1c2128; border: 2px solid #00ff88; padding: 25px; border-radius: 15px; margin-top: 15px; }
+    .asistan-header { color: #00ff88 !important; font-size: 22px; margin-bottom: 10px; border-bottom: 1px solid #00ff88; padding-bottom: 5px; }
+    .trend-badge { background: #00ff88; color: black; padding: 2px 10px; border-radius: 5px; font-weight: bold; }
     .radar-card { background-color: #161b22; border-left: 5px solid #00ff88; padding: 15px; border-radius: 12px; margin-bottom: 10px; border: 1px solid #30363d; }
-    .asistan-box { background: #1c2128; border: 1px solid #00ff88; padding: 20px; border-radius: 15px; }
-    
-    /* Tablo ve Grafik başlıklarını beyazlat */
-    .stPlotlyChart text { fill: white !important; }
     </style>
 """, unsafe_allow_html=True)
 
-# ÜST PANEL
+# ADMIN PANELİ
 if st.session_state["role"] == "admin":
     with st.expander("🛠️ ADMIN KEY MERKEZİ"):
         u_ad = st.text_input("Üye Adı:")
         l_sure = st.selectbox("Süre:", [1, 7, 30, 365], format_func=lambda x: f"{x} Gün")
         if st.button("Bekleyen Key Üret"):
-            generated = f"GAI-{int(time.time())}-{l_sure}-{u_ad[:3].upper()}"
-            st.code(generated)
+            st.code(f"GAI-{int(time.time())}-{l_sure}-{u_ad[:3].upper()}")
 
 sol, sag = st.columns([3, 1])
 
 with sol:
     if st.session_state["role"] == "user":
-        st.success(f"🔔 VIP Üyeliğiniz Aktif. Bitiş: {st.session_state['bitis_tarihi'].strftime('%d/%m/%Y')}")
+        st.success(f"🔔 VIP Lisans Aktif | Bitiş: {st.session_state['bitis_tarihi'].strftime('%d/%m/%Y')}")
     
-    st.markdown("<h1 style='color:#00ff88 !important;'>📈 VIP Analiz Paneli</h1>", unsafe_allow_html=True)
-    h_input = st.text_input("🔍 Hisse Sembolü Sorgula:", value="ISCTR").upper()
+    st.markdown("<h1 style='color:#00ff88 !important;'>📈 VIP Teknik Analiz</h1>", unsafe_allow_html=True)
+    h_input = st.text_input("🔍 Hisse Sembolü:", value="ISCTR").upper()
     
     try:
         sembol = h_input if "." in h_input else h_input + ".IS"
-        df = yf.download(sembol, period="1mo", interval="1d", progress=False)
+        df = yf.download(sembol, period="6mo", interval="1d", progress=False)
         if not df.empty:
             if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-            fiyat = float(df['Close'].iloc[-1])
             
-            c1, c2 = st.columns(2)
-            c1.metric("GÜNCEL FİYAT", f"{fiyat:.2f} TL")
-            c2.metric("GÜNLÜK DEĞİŞİM", f"%{((fiyat - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100:.2f}")
+            # TEKNİK HESAPLAMALAR
+            son_fiyat = float(df['Close'].iloc[-1])
+            ma20 = df['Close'].rolling(20).mean().iloc[-1]
+            ma50 = df['Close'].rolling(50).mean().iloc[-1]
             
-            st.area_chart(df['Close'].tail(20), color="#00ff88")
+            # RSI Hesaplama
+            delta = df['Close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+            rs = gain / loss
+            rsi = 100 - (100 / (1 + rs)).iloc[-1]
             
+            # Trend Belirleme
+            trend = "YUKARI (BULLISH)" if son_fiyat > ma20 else "AŞAĞI (BEARISH)"
+            
+            # METRİKLER
+            c1, c2, c3 = st.columns(3)
+            c1.metric("FİYAT", f"{son_fiyat:.2f} TL")
+            c2.metric("RSI (14)", f"{rsi:.1f}")
+            c3.metric("MA20 DESTEĞİ", f"{ma20:.2f}")
+
+            st.area_chart(df['Close'].tail(30), color="#00ff88")
+
+            # --- DETAYLI VIP ASİSTAN ---
             st.markdown(f"""
                 <div class='asistan-box'>
-                    <h3 style='color:#00ff88 !important; margin-top:0;'>🤵 VIP Asistan Analizi</h3>
-                    <p style='color:white !important;'>{h_input} hissesi için teknik veriler okundu. 
-                    Şu anki {fiyat:.2f} seviyesi VIP radarımızla %100 uyumlu ilerliyor.</p>
+                    <div class='asistan-header'>🤵 Gürkan AI Strateji Raporu</div>
+                    <p><b>Hisse:</b> {h_input} | <b>Analiz Tarihi:</b> {datetime.now().strftime('%d/%m/%Y')}</p>
+                    <p>📊 <b>Genel Trend:</b> <span class='trend-badge'>{trend}</span></p>
+                    <p>🚀 <b>RSI Durumu:</b> {"Aşırı Alım Bölgesi (Dikkat!)" if rsi > 70 else "Aşırı Satım (Fırsat Olabilir)" if rsi < 30 else "Nötr Bölge (Güvenli)"}</p>
+                    <p>📉 <b>Destek/Direnç:</b> Mevcut fiyat MA20 seviyesinin {"<b>üzerinde</b>, bu olumlu bir işaret." if son_fiyat > ma20 else "<b>altında</b>, baskı sürebilir."}</p>
+                    <hr style='border-color:#333;'>
+                    <p style='color:#00ff88;'><b>VIP TAVSİYE:</b> {h_input} için mevcut momentum { "korunuyor. Kademeli alım düşünülebilir." if trend == "YUKARI (BULLISH)" else "zayıf. Güçlenmesi beklenmeli."}</p>
                 </div>
             """, unsafe_allow_html=True)
     except: st.error("Veri Alınamadı.")
@@ -133,13 +127,4 @@ with sol:
 with sag:
     st.markdown("<h2 style='color:#00ff88 !important; text-align:center;'>🚀 VIP RADAR</h2>", unsafe_allow_html=True)
     for r in ["THYAO.IS", "ASELS.IS", "EREGL.IS", "SASA.IS", "TUPRS.IS"]:
-        st.markdown(f"""
-            <div class="radar-card">
-                <b style="color:#00ff88 !important;">{r.split('.')[0]}</b><br>
-                <span style="color:white !important;">Sinyal: %2+ Potansiyel</span>
-            </div>
-        """, unsafe_allow_html=True)
-
-if st.button("Çıkış Yap"):
-    st.session_state.clear()
-    st.rerun()
+        st.markdown(f"<div class='radar-card'><b style='color:#00ff88;'>{r.split('.')[0]}</b><br><span style='color:white;'>Sinyal: %2+ Potansiyel</span></div>", unsafe_allow_html=True)
