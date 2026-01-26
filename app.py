@@ -64,3 +64,42 @@ try:
         # Hareketli Ortalamalar
         df['MA20'] = df['Close'].rolling(window=20).mean()
         fig.add_trace(go.Scatter(x=df.index, y=df['MA20'], line=dict(color='#2962ff', width=1.5), name="MA20"), row=1, col=1)
+
+        # Hacim Renkleri (Fiyata göre renk alan hacim barları)
+        colors = ['#089981' if row['Open'] < row['Close'] else '#f23645' for _, row in df.iterrows()]
+        fig.add_trace(go.Bar(x=df.index, y=df['Volume'], name="Hacim", marker_color=colors, opacity=0.5), row=2, col=1)
+
+        fig.update_layout(
+            template="plotly_dark",
+            xaxis_rangeslider_visible=False,
+            height=550, # Tek ekrana sığması için optimize edildi
+            margin=dict(l=0, r=0, t=0, b=0),
+            paper_bgcolor="#0d1117",
+            plot_bgcolor="#0d1117",
+            showlegend=False
+        )
+        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+
+        # 5. Alt Panel: AI Yorum ve RSI (Tek Satırda 3 Sütun)
+        delta = df['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rsi = float(100 - (100 / (1 + (gain/loss))).iloc[-1])
+
+        c1, c2, c3 = st.columns(3)
+        with c1:
+            st.markdown(f"**💪 RSI Gücü:** `{rsi:.1f}`")
+            if rsi > 70: st.error("Aşırı Alım: Dikkat Satış Gelebilir")
+            elif rsi < 30: st.success("Aşırı Satım: Tepki Gelebilir")
+            else: st.info("Nötr Bölge: Trend Bekleniyor")
+        
+        with c2:
+            trend = "YÜKSELİŞ" if son_fiyat > df['MA20'].iloc[-1] else "DÜŞÜŞ"
+            st.markdown(f"**📈 Ana Trend:** `{trend}`")
+            st.write(f"MA20 Desteği: {df['MA20'].iloc[-1]:.2f}")
+
+        with c3:
+            st.link_button("🚀 KAP / HABERLER", f"https://www.google.com/search?q={aktif_temiz}+hisse+haberleri&tbm=nws", use_container_width=True)
+
+except Exception as e:
+    st.error(f"Veri Hatası: {e}")
