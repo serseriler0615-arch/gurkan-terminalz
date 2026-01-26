@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import plotly.express as px
 
-# 1. Terminal Stil Ayarları
+# 1. Terminal Stil Ayarları (Tam Kontrol)
 st.set_page_config(page_title="Gürkan AI - Kişisel Asistan", layout="wide", initial_sidebar_state="collapsed")
 
 tr_aylar = {"Jan": "Ocak", "Feb": "Şubat", "Mar": "Mart", "Apr": "Nisan", "May": "Mayıs", "Jun": "Haziran",
@@ -11,16 +11,20 @@ tr_aylar = {"Jan": "Ocak", "Feb": "Şubat", "Mar": "Mart", "Apr": "Nisan", "May"
 
 st.markdown("""
     <style>
-    .stApp { background-color: #0d1117; }
+    /* Arka planı ve tüm konteynerları aynı renge sabitliyoruz */
+    .stApp, .block-container, .main { background-color: #0d1117 !important; }
     header {visibility: hidden;}
+    
+    /* Plotly grafiğinin dışındaki tüm olası siyah çerçeveleri kaldır */
+    div[data-testid="stPlotlyChart"] { background-color: transparent !important; border: none !important; }
+    iframe { background-color: transparent !important; }
+    
     div[data-testid="stMetric"] { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; }
     .radar-card { background-color: #161b22; border-left: 4px solid #00ff88; padding: 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid #30363d; }
     .personal-assistant { 
         background: #1c2128; border: 1px solid #00ff88; padding: 20px; border-radius: 15px; 
-        color: #e6edf3; font-style: italic; line-height: 1.6;
+        color: #e6edf3; font-style: italic;
     }
-    /* Siyah kutuları engellemek için Plotly arka planını şeffaf yapıyoruz */
-    .js-plotly-plot .plotly .main-svg { background: transparent !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -51,26 +55,31 @@ with ana_sol:
             plot_df = df[['Close']].tail(20).copy()
             tr_eks = [d.strftime("%d %b").replace(d.strftime("%b"), tr_aylar.get(d.strftime("%b"), d.strftime("%b"))) for d in plot_df.index]
             
-            # Plotly ile Şeffaf Grafik Oluşturma
-            fig = px.area(x=tr_eks, y=plot_df['Close'], labels={'x': '', 'y': ''})
-            fig.update_traces(line_color='#00ff88', fillcolor='rgba(0, 255, 136, 0.2)')
+            fig = px.area(x=tr_eks, y=plot_df['Close'])
+            # Çizgi ve dolgu rengini neon yeşil yapıyoruz
+            fig.update_traces(line_color='#00ff88', fillcolor='rgba(0, 255, 136, 0.15)')
+            
+            # BURASI KRİTİK: Tüm arka planları sayfa rengiyle (0d1117) eşitliyoruz
             fig.update_layout(
-                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                font_color='#e6edf3', margin=dict(l=0, r=0, t=20, b=0), height=300,
-                xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor='#30363d')
+                paper_bgcolor='#0d1117', 
+                plot_bgcolor='#0d1117',
+                font_color='#e6edf3', 
+                margin=dict(l=0, r=0, t=10, b=0), 
+                height=280,
+                xaxis=dict(showgrid=False, color='#888'), 
+                yaxis=dict(showgrid=True, gridcolor='#1c2128', color='#888', position=0)
             )
             
             st.write(f"📈 **{h_input} - Trend Analizi**")
             st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-            # --- TEKNİK VERİLER ---
+            # --- TEKNİK ANALİZ VE ASİSTAN ---
             ma20 = df['Close'].rolling(20).mean().iloc[-1]
-            ma50 = df['Close'].rolling(50).mean().iloc[-1]
             diff = df['Close'].diff(); g = (diff.where(diff > 0, 0)).rolling(14).mean(); l = (-diff.where(diff < 0, 0)).rolling(14).mean()
             rsi = 100 - (100 / (1 + (g/l))).iloc[-1]
 
             st.markdown("### 🛰️ Teknik Sinyal Merkezi")
-            s1, s2, s3 = st.columns(3)
+            s1, s2 = st.columns(2)
             with s1:
                 if rsi > 70: st.error(f"🚨 RSI: Aşırı Alım ({rsi:.1f})")
                 elif rsi < 35: st.success(f"🔥 RSI: Fırsat ({rsi:.1f})")
@@ -78,32 +87,24 @@ with ana_sol:
             with s2:
                 if son_fiyat > ma20: st.success(f"📈 MA20: Üstünde")
                 else: st.error(f"📉 MA20: Altında")
-            with s3:
-                if ma20 > ma50: st.success(f"🚀 Trend: Yükseliş")
-                else: st.warning(f"⚠️ Trend: Zayıf")
 
             # --- KİŞİSEL ASİSTAN ---
-            msg = f"Dostum, {h_input} için tabloya baktım. "
-            if rsi < 40 and son_fiyat > ma20:
-                msg += f"Şu an teknik olarak harika bir yerde. RSI {rsi:.1f} ile henüz yorulmamış ve 20 günlük ortalamanın ({ma20:.2f} TL) üzerinde güç topluyor. Yukarı yönlü bir ivme beklenebilir."
-            elif rsi > 65:
-                msg += f"Dikkatli olmanı öneririm; hisse biraz şişmiş (RSI: {rsi:.1f}). Buralardan bir miktar kâr satışı gelmesi normal olur, yeni alım için {ma20:.2f} TL seviyelerine çekilmeyi beklemek daha zekice olabilir."
-            else:
-                msg += f"Şu an tam bir 'bekle-gör' evresinde. Fiyat {ma20:.2f} TL olan kısa vade desteğinin {'üzerinde' if son_fiyat > ma20 else 'altında'}. Net bir yön tayini için hacimli bir kırılım beklemelisin."
+            asistan_notu = f"Dostum, {h_input} için durumu süzdüm. "
+            if rsi < 45 and son_fiyat > ma20: asistan_notu += "Teknik olarak çok diri duruyor. 20 günlük desteğin üzerinde kalması güven verici."
+            elif rsi > 68: asistan_notu += "Hisse biraz nefessiz kalmış gibi, buralardan girmek riskli olabilir."
+            else: asistan_notu += "Yatay seyir hakim, yön tayini için biraz daha izlemekte fayda var."
 
-            st.markdown(f'<div class="personal-assistant"><b>🤵 Gürkan AI Kişisel Analist Notu:</b><br>"{msg}"</div>', unsafe_allow_html=True)
+            st.markdown(f'<div class="personal-assistant"><b>🤵 Gürkan AI Notu:</b><br>"{asistan_notu}"</div>', unsafe_allow_html=True)
 
-    except: st.error("Hisse bilgisi alınırken bir sorun oluştu.")
+    except: st.error("Veri çekilemedi.")
 
 with ana_sag:
-    st.markdown("### 🛰️ AI POTANSİYEL RADARI")
+    st.markdown("### 🛰️ AI RADAR")
     radar = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "ISCTR.IS", "SASA.IS"]
     for r in radar:
         try:
             rd = yf.download(r, period="2d", interval="1d", progress=False)
             if not rd.empty:
-                if isinstance(rd.columns, pd.MultiIndex): rd.columns = rd.columns.get_level_values(0)
                 f = ((rd['Close'].iloc[-1] - rd['Close'].iloc[-2]) / rd['Close'].iloc[-2]) * 100
-                st.markdown(f'<div class="radar-card"><b style="color:#00ff88;">{r.split(".")[0]}</b> : %{f:.2f}</div>', unsafe_allow_html=True)
+                st.markdown(f'<div class="radar-card"><b>{r.split(".")[0]}</b> : %{f:.2f}</div>', unsafe_allow_html=True)
         except: continue
-    st.button("🔄 Radarı Yenile", use_container_width=True)
