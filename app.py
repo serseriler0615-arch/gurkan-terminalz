@@ -31,9 +31,10 @@ if not hisse_kod.endswith(".IS"):
     hisse_kod += ".IS"
 
 # Veri Çekme
-@st.cache_data(ttl=600) # 10 dakika önbellekte tutar
+@st.cache_data(ttl=60) # Önbelleği 1 dakikaya indirdik, böylece sürekli yenilenir
 def veri_indir(kod):
-    data = yf.download(kod, period="1y", interval="1d")
+    # '1d' yerine '5d' period ve '1m' interval kullanarak en taze dakikalık veriyi çekiyoruz
+    data = yf.download(kod, period="5d", interval="1m") 
     return data
 
 try:
@@ -84,9 +85,8 @@ try:
                 st.success("📈 TAVSİYE: ÇIKABİLİR")
                 st.write("Aşırı satım bölgesinde (RSI < 30). Tepki alımları beklenir.")
             else:
-                if son_fiyat > ma20:
-                    st.info("⬆️ TAVSİYE: TREND YUKARI")
-                    st.write("Fiyat ortalamanın üzerinde. Yükseliş isteği sürüyor.")
+                if son_fiyat = float(df['Close'].iloc[-1]) # En son kapanış fiyatı
+onceki_fiyat = float(df['Close'].iloc[-2]) # Bir önceki dakikanın fiyatı
                 else:
                     st.warning("⬇️ TAVSİYE: TREND AŞAĞI")
                     st.write("Fiyat ortalamanın altında. Satış baskısı hissediliyor.")
@@ -101,3 +101,4 @@ try:
         st.error("Veri çekilemedi. Kodun doğruluğunu kontrol edin.")
 except Exception as e:
     st.error(f"Hata: {e}")
+
