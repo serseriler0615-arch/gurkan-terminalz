@@ -1,110 +1,87 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
-import plotly.express as px
 
-# 1. Terminal Stil Ayarları (Tam Kontrol)
-st.set_page_config(page_title="Gürkan AI - Kişisel Asistan", layout="wide", initial_sidebar_state="collapsed")
-
-tr_aylar = {"Jan": "Ocak", "Feb": "Şubat", "Mar": "Mart", "Apr": "Nisan", "May": "Mayıs", "Jun": "Haziran",
-            "Jul": "Temmuz", "Aug": "Ağustos", "Sep": "Eylül", "Oct": "Ekim", "Nov": "Kasım", "Dec": "Aralık"}
+# 1. Stil ve Arka Plan Sabitleme (Siyahlığı Boğma)
+st.set_page_config(page_title="Gürkan AI Terminal", layout="wide", initial_sidebar_state="collapsed")
 
 st.markdown("""
     <style>
-    /* Arka planı ve tüm konteynerları aynı renge sabitliyoruz */
-    .stApp, .block-container, .main { background-color: #0d1117 !important; }
+    /* Tüm ekranı tek renge zorla */
+    .stApp, .block-container, [data-testid="stVerticalBlock"] { background-color: #0d1117 !important; }
     header {visibility: hidden;}
     
-    /* Plotly grafiğinin dışındaki tüm olası siyah çerçeveleri kaldır */
-    div[data-testid="stPlotlyChart"] { background-color: transparent !important; border: none !important; }
-    iframe { background-color: transparent !important; }
-    
+    /* Metrik ve Kartlar */
     div[data-testid="stMetric"] { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; }
-    .radar-card { background-color: #161b22; border-left: 4px solid #00ff88; padding: 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid #30363d; }
-    .personal-assistant { 
-        background: #1c2128; border: 1px solid #00ff88; padding: 20px; border-radius: 15px; 
-        color: #e6edf3; font-style: italic;
-    }
+    .radar-card { background-color: #161b22; border-left: 4px solid #00ff88; padding: 12px; border-radius: 10px; margin-bottom: 10px; border: 1px solid #30363d; }
+    .asistan-notu { background: #1c2128; border: 1px solid #00ff88; padding: 15px; border-radius: 12px; color: #e6edf3; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. Üst Panel
+# 2. Ana Panel Düzeni
 ana_sol, ana_sag = st.columns([3, 1])
 
 with ana_sol:
     c1, c2, c3 = st.columns([1.5, 1, 1])
     with c1:
-        h_input = st.text_input("🔍 Hangi hisseyi inceleyelim?", value="ISCTR").upper().strip()
+        h_input = st.text_input("🔍 Hisse:", value="ISCTR").upper().strip()
     
     sembol = h_input if "." in h_input else h_input + ".IS"
 
     try:
-        ticker = yf.Ticker(sembol)
-        df = ticker.history(period="6mo", interval="1d")
-        
+        # ANA VERİ ÇEKME
+        df = yf.download(sembol, period="3mo", interval="1d", progress=False)
         if not df.empty:
             if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-            son_fiyat = ticker.fast_info['last_price']
-            dunku_kapanis = df['Close'].iloc[-2]
-            yuzde_degisim = ((son_fiyat - dunku_kapanis) / dunku_kapanis) * 100
-
-            with c2: st.metric("GÜNCEL FİYAT", f"{son_fiyat:.2f} TL")
-            with c3: st.metric("GÜNLÜK DEĞİŞİM", f"%{yuzde_degisim:.2f}", f"{son_fiyat-dunku_kapanis:+.2f}")
-
-            # --- SİYAHSIZ PLOTLY GRAFİK ---
-            plot_df = df[['Close']].tail(20).copy()
-            tr_eks = [d.strftime("%d %b").replace(d.strftime("%b"), tr_aylar.get(d.strftime("%b"), d.strftime("%b"))) for d in plot_df.index]
             
-            fig = px.area(x=tr_eks, y=plot_df['Close'])
-            # Çizgi ve dolgu rengini neon yeşil yapıyoruz
-            fig.update_traces(line_color='#00ff88', fillcolor='rgba(0, 255, 136, 0.15)')
-            
-            # BURASI KRİTİK: Tüm arka planları sayfa rengiyle (0d1117) eşitliyoruz
-            fig.update_layout(
-                paper_bgcolor='#0d1117', 
-                plot_bgcolor='#0d1117',
-                font_color='#e6edf3', 
-                margin=dict(l=0, r=0, t=10, b=0), 
-                height=280,
-                xaxis=dict(showgrid=False, color='#888'), 
-                yaxis=dict(showgrid=True, gridcolor='#1c2128', color='#888', position=0)
-            )
-            
-            st.write(f"📈 **{h_input} - Trend Analizi**")
-            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+            son_fiyat = float(df['Close'].iloc[-1])
+            dunku_kapanis = float(df['Close'].iloc[-2])
+            degisim = ((son_fiyat - dunku_kapanis) / dunku_kapanis) * 100
 
-            # --- TEKNİK ANALİZ VE ASİSTAN ---
+            with c2: st.metric("FİYAT", f"{son_fiyat:.2f} TL")
+            with c3: st.metric("GÜNLÜK", f"%{degisim:.2f}", f"{son_fiyat-dunku_kapanis:+.2f}")
+
+            # GRAFİK: Sadece 20 gün ve siyahlık yapmayan yerel bileşen
+            st.write(f"📈 **{h_input} - Son 20 Günlük Trend**")
+            st.area_chart(df['Close'].tail(20), color="#00ff88", height=250)
+
+            # ASİSTAN ANALİZİ
             ma20 = df['Close'].rolling(20).mean().iloc[-1]
             diff = df['Close'].diff(); g = (diff.where(diff > 0, 0)).rolling(14).mean(); l = (-diff.where(diff < 0, 0)).rolling(14).mean()
             rsi = 100 - (100 / (1 + (g/l))).iloc[-1]
 
-            st.markdown("### 🛰️ Teknik Sinyal Merkezi")
-            s1, s2 = st.columns(2)
-            with s1:
-                if rsi > 70: st.error(f"🚨 RSI: Aşırı Alım ({rsi:.1f})")
-                elif rsi < 35: st.success(f"🔥 RSI: Fırsat ({rsi:.1f})")
-                else: st.info(f"⚖️ RSI: Dengeli ({rsi:.1f})")
-            with s2:
-                if son_fiyat > ma20: st.success(f"📈 MA20: Üstünde")
-                else: st.error(f"📉 MA20: Altında")
-
-            # --- KİŞİSEL ASİSTAN ---
-            asistan_notu = f"Dostum, {h_input} için durumu süzdüm. "
-            if rsi < 45 and son_fiyat > ma20: asistan_notu += "Teknik olarak çok diri duruyor. 20 günlük desteğin üzerinde kalması güven verici."
-            elif rsi > 68: asistan_notu += "Hisse biraz nefessiz kalmış gibi, buralardan girmek riskli olabilir."
-            else: asistan_notu += "Yatay seyir hakim, yön tayini için biraz daha izlemekte fayda var."
-
-            st.markdown(f'<div class="personal-assistant"><b>🤵 Gürkan AI Notu:</b><br>"{asistan_notu}"</div>', unsafe_allow_html=True)
-
-    except: st.error("Veri çekilemedi.")
+            st.markdown("### 🤵 Kişisel Asistan Yorumu")
+            not_metni = f"Dostum, **{h_input}** şu an {son_fiyat:.2f} TL. "
+            if rsi < 45: not_metni += "Hisse dinlenmiş, RSI düşük seviyelerde. Bu bir fırsat olabilir."
+            elif rsi > 70: not_metni += "Hisse çok ısınmış, buralardan girmek riskli gözüküyor."
+            else: not_metni += "Şu an dengeli bir seyir var, MA20 desteğini takip etmelisin."
+            
+            st.markdown(f'<div class="asistan-notu">{not_metni}</div>', unsafe_allow_html=True)
+    except:
+        st.error("Veri alınamadı.")
 
 with ana_sag:
     st.markdown("### 🛰️ AI RADAR")
-    radar = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "ISCTR.IS", "SASA.IS"]
-    for r in radar:
+    # Radarı garantiye alan liste ve döngü
+    radarlar = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "ISCTR.IS", "SASA.IS"]
+    
+    for r in radarlar:
         try:
-            rd = yf.download(r, period="2d", interval="1d", progress=False)
-            if not rd.empty:
-                f = ((rd['Close'].iloc[-1] - rd['Close'].iloc[-2]) / rd['Close'].iloc[-2]) * 100
-                st.markdown(f'<div class="radar-card"><b>{r.split(".")[0]}</b> : %{f:.2f}</div>', unsafe_allow_html=True)
-        except: continue
+            r_df = yf.download(r, period="5d", interval="1d", progress=False)
+            if not r_df.empty:
+                if isinstance(r_df.columns, pd.MultiIndex): r_df.columns = r_df.columns.get_level_values(0)
+                r_son = r_df['Close'].iloc[-1]
+                r_once = r_df['Close'].iloc[-2]
+                r_fark = ((r_son - r_once) / r_once) * 100
+                st.markdown(f"""
+                <div class="radar-card">
+                    <b style="color:#00ff88;">{r.split('.')[0]}</b><br>
+                    <span style="font-size: 14px; color: #e6edf3;">Fiyat: {r_son:.2f} TL</span>
+                    <span style="color: {'#00ff88' if r_fark > 0 else '#ff4b4b'}; float: right;">%{r_fark:.2f}</span>
+                </div>
+                """, unsafe_allow_html=True)
+        except:
+            st.caption(f"{r} güncellenemedi")
+
+    if st.button("🔄 Radarı Yenile", use_container_width=True):
+        st.rerun()
