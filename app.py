@@ -1,6 +1,7 @@
 import streamlit as st
 import yfinance as yf
 import pandas as pd
+import plotly.express as px
 
 # 1. Terminal Stil Ayarları
 st.set_page_config(page_title="Gürkan AI - Kişisel Asistan", layout="wide", initial_sidebar_state="collapsed")
@@ -15,11 +16,11 @@ st.markdown("""
     div[data-testid="stMetric"] { background-color: #161b22; border: 1px solid #30363d; border-radius: 12px; }
     .radar-card { background-color: #161b22; border-left: 4px solid #00ff88; padding: 12px; border-radius: 10px; margin-bottom: 8px; border: 1px solid #30363d; }
     .personal-assistant { 
-        background: linear-gradient(135deg, #1c2128 0%, #0d1117 100%); 
-        border: 1px solid #00ff88; padding: 20px; border-radius: 15px; 
+        background: #1c2128; border: 1px solid #00ff88; padding: 20px; border-radius: 15px; 
         color: #e6edf3; font-style: italic; line-height: 1.6;
-        box-shadow: 0 4px 15px rgba(0, 255, 136, 0.1);
     }
+    /* Siyah kutuları engellemek için Plotly arka planını şeffaf yapıyoruz */
+    .js-plotly-plot .plotly .main-svg { background: transparent !important; }
     </style>
     """, unsafe_allow_html=True)
 
@@ -29,9 +30,9 @@ ana_sol, ana_sag = st.columns([3, 1])
 with ana_sol:
     c1, c2, c3 = st.columns([1.5, 1, 1])
     with c1:
-        hisse_kod = st.text_input("🔍 Hangi hisseyi inceleyelim?", value="ISCTR").upper().strip()
+        h_input = st.text_input("🔍 Hangi hisseyi inceleyelim?", value="ISCTR").upper().strip()
     
-    sembol = hisse_kod if "." in hisse_kod else hisse_kod + ".IS"
+    sembol = h_input if "." in h_input else h_input + ".IS"
 
     try:
         ticker = yf.Ticker(sembol)
@@ -39,8 +40,6 @@ with ana_sol:
         
         if not df.empty:
             if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-            
-            # Anlık Veriler
             son_fiyat = ticker.fast_info['last_price']
             dunku_kapanis = df['Close'].iloc[-2]
             yuzde_degisim = ((son_fiyat - dunku_kapanis) / dunku_kapanis) * 100
@@ -48,19 +47,23 @@ with ana_sol:
             with c2: st.metric("GÜNCEL FİYAT", f"{son_fiyat:.2f} TL")
             with c3: st.metric("GÜNLÜK DEĞİŞİM", f"%{yuzde_degisim:.2f}", f"{son_fiyat-dunku_kapanis:+.2f}")
 
-            # --- 20 GÜNLÜK TÜRKÇE GRAFİK ---
+            # --- SİYAHSIZ PLOTLY GRAFİK ---
             plot_df = df[['Close']].tail(20).copy()
-            tr_eks = []
-            for d in plot_df.index:
-                t = d.strftime("%d %b")
-                for e, tr in tr_aylar.items(): t = t.replace(e, tr)
-                tr_eks.append(t)
-            plot_df.index = tr_eks
+            tr_eks = [d.strftime("%d %b").replace(d.strftime("%b"), tr_aylar.get(d.strftime("%b"), d.strftime("%b"))) for d in plot_df.index]
             
-            st.write(f"📈 **{hisse_kod} - Son 20 İş Günü Trend Analizi**")
-            st.area_chart(plot_df, color="#00ff88", height=250)
+            # Plotly ile Şeffaf Grafik Oluşturma
+            fig = px.area(x=tr_eks, y=plot_df['Close'], labels={'x': '', 'y': ''})
+            fig.update_traces(line_color='#00ff88', fillcolor='rgba(0, 255, 136, 0.2)')
+            fig.update_layout(
+                paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
+                font_color='#e6edf3', margin=dict(l=0, r=0, t=20, b=0), height=300,
+                xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor='#30363d')
+            )
+            
+            st.write(f"📈 **{h_input} - Trend Analizi**")
+            st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-            # --- 🧠 STRATEJİ VERİLERİ ---
+            # --- TEKNİK VERİLER ---
             ma20 = df['Close'].rolling(20).mean().iloc[-1]
             ma50 = df['Close'].rolling(50).mean().iloc[-1]
             diff = df['Close'].diff(); g = (diff.where(diff > 0, 0)).rolling(14).mean(); l = (-diff.where(diff < 0, 0)).rolling(14).mean()
@@ -68,8 +71,6 @@ with ana_sol:
 
             st.markdown("### 🛰️ Teknik Sinyal Merkezi")
             s1, s2, s3 = st.columns(3)
-            
-            # Hatasız Sinyal Kutuları
             with s1:
                 if rsi > 70: st.error(f"🚨 RSI: Aşırı Alım ({rsi:.1f})")
                 elif rsi < 35: st.success(f"🔥 RSI: Fırsat ({rsi:.1f})")
@@ -81,25 +82,19 @@ with ana_sol:
                 if ma20 > ma50: st.success(f"🚀 Trend: Yükseliş")
                 else: st.warning(f"⚠️ Trend: Zayıf")
 
-            # --- 🤵 KİŞİSEL ASİSTANIN YORUMU ---
-            asistan_mesaji = f"Dostum, {hisse_kod} için tabloyu inceledim. "
+            # --- KİŞİSEL ASİSTAN ---
+            msg = f"Dostum, {h_input} için tabloya baktım. "
             if rsi < 40 and son_fiyat > ma20:
-                asistan_mesaji += f"Şu an teknik olarak harika bir yerde. RSI {rsi:.1f} ile henüz yorulmamış ve 20 günlük ortalamanın ({ma20:.2f} TL) üzerinde güç topluyor. Yukarı yönlü bir ivme beklenebilir."
+                msg += f"Şu an teknik olarak harika bir yerde. RSI {rsi:.1f} ile henüz yorulmamış ve 20 günlük ortalamanın ({ma20:.2f} TL) üzerinde güç topluyor. Yukarı yönlü bir ivme beklenebilir."
             elif rsi > 65:
-                asistan_mesaji += f"Dikkatli olmanı öneririm; hisse biraz şişmiş (RSI: {rsi:.1f}). Buralardan bir miktar kar satışı gelmesi normal olur, yeni alım için {ma20:.2f} TL seviyelerine çekilmeyi beklemek daha zekice olabilir."
+                msg += f"Dikkatli olmanı öneririm; hisse biraz şişmiş (RSI: {rsi:.1f}). Buralardan bir miktar kâr satışı gelmesi normal olur, yeni alım için {ma20:.2f} TL seviyelerine çekilmeyi beklemek daha zekice olabilir."
             else:
-                asistan_mesaji += f"Şu an tam bir 'bekle-gör' evresinde. Fiyat {ma20:.2f} TL olan kısa vade desteğinin {'üzerinde' if son_fiyat > ma20 else 'altında'}. Net bir yön tayini için hacimli bir kırılım beklemelisin."
+                msg += f"Şu an tam bir 'bekle-gör' evresinde. Fiyat {ma20:.2f} TL olan kısa vade desteğinin {'üzerinde' if son_fiyat > ma20 else 'altında'}. Net bir yön tayini için hacimli bir kırılım beklemelisin."
 
-            st.markdown(f"""
-            <div class="personal-assistant">
-                <b>🤵 Gürkan AI Kişisel Analist Notu:</b><br>
-                "{asistan_mesaji}"
-            </div>
-            """, unsafe_allow_html=True)
+            st.markdown(f'<div class="personal-assistant"><b>🤵 Gürkan AI Kişisel Analist Notu:</b><br>"{msg}"</div>', unsafe_allow_html=True)
 
     except: st.error("Hisse bilgisi alınırken bir sorun oluştu.")
 
-# --- SAĞ RADAR (5 HİSSE) ---
 with ana_sag:
     st.markdown("### 🛰️ AI POTANSİYEL RADARI")
     radar = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "ISCTR.IS", "SASA.IS"]
@@ -109,10 +104,6 @@ with ana_sag:
             if not rd.empty:
                 if isinstance(rd.columns, pd.MultiIndex): rd.columns = rd.columns.get_level_values(0)
                 f = ((rd['Close'].iloc[-1] - rd['Close'].iloc[-2]) / rd['Close'].iloc[-2]) * 100
-                st.markdown(f"""
-                <div class="radar-card">
-                    <b style="color:#00ff88;">{r.split(".")[0]}</b> : %{f:.2f}
-                </div>
-                """, unsafe_allow_html=True)
+                st.markdown(f'<div class="radar-card"><b style="color:#00ff88;">{r.split(".")[0]}</b> : %{f:.2f}</div>', unsafe_allow_html=True)
         except: continue
     st.button("🔄 Radarı Yenile", use_container_width=True)
