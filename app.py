@@ -4,36 +4,34 @@ import pandas as pd
 import plotly.graph_objects as go
 from plotly.subplots import make_subplots
 
-# 1. Sayfa Konfigürasyonu (Geniş ve Dar Boşluklu)
-st.set_page_config(page_title="Gürkan AI Terminal", layout="wide", initial_sidebar_state="collapsed")
+# 1. Sayfa Konfigürasyonu
+st.set_page_config(page_title="BIST AI Terminal", layout="wide")
 
-# ARAMA MOTORUNU AŞAĞI ÇEKEN VE TASARIMI DÜZELTEN ÖZEL CSS
+# Görsel Yerleşimi Düzelten Özel CSS
 st.markdown("""
     <style>
-    .block-container { padding-top: 3rem; max-width: 95%; }
-    div[data-testid="stMetric"] { background-color: #1a1c24; border: 1px solid #30363d; padding: 15px; border-radius: 12px; }
-    .stTextInput { margin-top: 15px; } /* Arama motorunu aşağı çeker */
-    .stSelectbox { margin-top: 15px; }
+    .block-container { padding-top: 2rem; }
+    .stMetric { background-color: #1a1c24; border: 1px solid #30363d; padding: 20px; border-radius: 15px; }
+    .stTextInput > div > div > input { font-size: 20px; padding: 10px; }
     </style>
     """, unsafe_allow_html=True)
 
-# 2. ANA PANEL (Arama ve Fiyatlar Tek Satırda)
-with st.container():
-    c1, c2, c3, c4 = st.columns([1.2, 1, 1, 1])
-    
-    if 'favoriler' not in st.session_state:
-        st.session_state.favoriler = ["THYAO.IS", "ULKER.IS", "EREGL.IS", "ASELS.IS", "ISCTR.IS"]
+# 2. Arama Bölümü (Üstte Tek Başına)
+if 'favoriler' not in st.session_state:
+    st.session_state.favoriler = ["THYAO.IS", "ULKER.IS", "EREGL.IS", "ASELS.IS", "ISCTR.IS"]
 
-    with c1:
-        hisse_input = st.text_input("🔍 Hisse Ara", placeholder="Örn: SASA").upper().strip()
-    with c2:
-        secilen_fav = st.selectbox("⭐ Favoriler", st.session_state.favoriler)
+st.title("🚀 BIST AI Analiz Terminali")
+c1, c2 = st.columns([2, 1])
+with c1:
+    hisse_input = st.text_input("🔍 Hisse Kodu Girin (Örn: SASA):", "").upper().strip()
+with c2:
+    secilen_fav = st.selectbox("⭐ Favori Listesi:", st.session_state.favoriler)
 
-    # Aktif Sembol Kararı
-    aktif_hisse = (hisse_input if "." in hisse_input else hisse_input + ".IS") if hisse_input else secilen_fav
-    aktif_temiz = aktif_hisse.replace(".IS", "")
+# Aktif Sembol
+aktif_hisse = (hisse_input if "." in hisse_input else hisse_input + ".IS") if hisse_input else secilen_fav
+aktif_temiz = aktif_hisse.replace(".IS", "")
 
-# 3. VERİ MOTORU VE HESAPLAMA
+# 3. Veri ve Hesaplama
 try:
     df = yf.download(aktif_hisse, period="5d", interval="15m", progress=False, auto_adjust=True)
     gunluk = yf.download(aktif_hisse, period="5d", interval="1d", progress=False, auto_adjust=True)
@@ -44,45 +42,64 @@ try:
         fark = son_fiyat - dunku_kapanis
         degisim = (fark / dunku_kapanis) * 100
 
-        with c3:
-            st.metric("SON FİYAT", f"{son_fiyat:.2f} TL")
-        with c4:
-            st.metric("GÜNLÜK DEĞİŞİM", f"%{degisim:.2f}", f"{fark:+.2f} TL")
+        # Fiyat Metrikleri
+        m1, m2, m3 = st.columns(3)
+        m1.metric("GÜNCEL FİYAT", f"{son_fiyat:.2f} TL")
+        m2.metric("GÜNLÜK DEĞİŞİM", f"%{degisim:.2f}")
+        m3.metric("FARK", f"{fark:+.2f} TL")
 
-        st.markdown("<br>", unsafe_allow_html=True) # Küçük bir boşluk
-
-        # 4. RENKLENDİRİLMİŞ GRAFİK (TRADINGVIEW RENKLERİ)
-        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
-                           vertical_spacing=0.03, row_width=[0.2, 0.8])
-
+        # 4. Profesyonel Renkli Grafik
+        st.markdown("---")
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, vertical_spacing=0.05, row_width=[0.2, 0.8])
+        
         # Mumlar
         fig.add_trace(go.Candlestick(
             x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
-            name="Fiyat",
-            increasing_line_color='#089981', decreasing_line_color='#f23645',
-            increasing_fillcolor='#089981', decreasing_fillcolor='#f23645'
+            name="Fiyat", increasing_line_color='#00ff41', decreasing_line_color='#ff0000'
         ), row=1, col=1)
 
-        # Hacim Barları (Hatasız Renklendirme)
-        h_colors = ['#089981' if (c >= o) else '#f23645' for o, c in zip(df['Open'], df['Close'])]
-        fig.add_trace(go.Bar(x=df.index, y=df['Volume'], marker_color=h_colors, opacity=0.4), row=2, col=1)
+        # Hacim
+        h_colors = ['#00ff41' if (c >= o) else '#ff0000' for o, c in zip(df['Open'], df['Close'])]
+        fig.add_trace(go.Bar(x=df.index, y=df['Volume'], marker_color=h_colors, name="Hacim"), row=2, col=1)
 
-        fig.update_layout(
-            template="plotly_dark", xaxis_rangeslider_visible=False, height=500,
-            margin=dict(l=10, r=10, t=10, b=10), paper_bgcolor="#0d1117", plot_bgcolor="#0d1117", showlegend=False
-        )
-        st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
+        fig.update_layout(template="plotly_dark", xaxis_rangeslider_visible=False, height=500, margin=dict(l=0, r=0, t=0, b=0))
+        st.plotly_chart(fig, use_container_width=True)
 
-        # 5. ALT PANEL: AI YORUMU
+        # 5. 🧠 AI SİNYAL VE YORUM (İstediğin Bölüm)
+        st.markdown("---")
+        st.subheader("🤖 AI Teknik Analiz ve Strateji")
+        
+        # RSI Hesapla
         delta = df['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
         rsi = float(100 - (100 / (1 + (gain/loss))).iloc[-1])
 
-        st.info(f"🤖 **AI ANALİZ NOTU:** {aktif_temiz} hissesi şu an %{degisim:.2f} değişimle işlem görüyor. RSI değeri {rsi:.1f} seviyesinde. Trend durumu teknik olarak takip edilmeli.")
+        col_si1, col_si2 = st.columns(2)
+        
+        with col_si1:
+            st.write(f"📊 **Gösterge Durumu (RSI):** `{rsi:.1f}`")
+            if rsi > 70:
+                st.error("🚨 SİNYAL: AŞIRI ALIM (SAT)")
+                st.markdown("> **Yorum:** Hisse teknik olarak çok ısınmış. Kar satışları gelebilir, yeni alım için riskli bölge.")
+            elif rsi < 30:
+                st.success("🚀 SİNYAL: AŞIRI SATIM (AL)")
+                st.markdown("> **Yorum:** Hisse çok ucuzlamış. Buradan bir tepki yükselişi beklenir, kademeli alım düşünülebilir.")
+            else:
+                st.info("⚖️ SİNYAL: NÖTR (BEKLE)")
+                st.markdown("> **Yorum:** Hisse denge fiyatında. Net bir trend oluşumu için hacim artışı takip edilmeli.")
+
+        with col_si2:
+            st.write("📈 **Trend Analizi:**")
+            if degisim > 0:
+                st.write(f"✅ Hisse bugün **ALICILI** bir seyir izliyor. {dunku_kapanis} TL desteği üzerinde güç topluyor.")
+            else:
+                st.write(f"❌ Hisse bugün **SATICILI** bir seyir izliyor. {dunku_kapanis} TL seviyesi şu an direnç konumunda.")
+            
+            st.link_button("🚀 HABERLERİ AÇ", f"https://www.google.com/search?q={aktif_temiz}+hisse+haberleri&tbm=nws", use_container_width=True)
 
     else:
-        st.warning("Hisse verisi aranıyor...")
+        st.info("Lütfen bir BIST kodu girin veya favorilerden seçin.")
 
 except Exception as e:
-    st.error(f"Sistem Hatası: {e}")
+    st.error(f"Hata: {e}")
