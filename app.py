@@ -38,20 +38,17 @@ secilen_fav = st.sidebar.selectbox("Favorilerinden Hızlı Seç:", st.session_st
 
 # --- ANA EKRAN ---
 
-# TradingView Canlı Widget (0 Saniye Gecikme)
+# TradingView Widget Fonksiyonu - GENİŞLETİLMİŞ VERSİYON
 def tradingview_widget(symbol):
-    # .IS kısmını TradingView formatına çevir (BIST:THYAO)
     tv_symbol = symbol.replace(".IS", "")
-    target = f"BIST:{tv_symbol}"
-    
     html_code = f"""
-    <div class="tradingview-widget-container" style="height:500px;">
-      <div id="tradingview_chart"></div>
+    <div class="tradingview-widget-container" style="height:700px; width:100%;">
+      <div id="tradingview_chart" style="height:100%; width:100%;"></div>
       <script type="text/javascript" src="https://s3.tradingview.com/tv.js"></script>
       <script type="text/javascript">
       new TradingView.widget({{
         "autosize": true,
-        "symbol": "{target}",
+        "symbol": "BIST:{tv_symbol}",
         "interval": "1",
         "timezone": "Europe/Istanbul",
         "theme": "light",
@@ -59,13 +56,15 @@ def tradingview_widget(symbol):
         "locale": "tr",
         "toolbar_bg": "#f1f3f6",
         "enable_publishing": false,
+        "hide_side_toolbar": false,
         "allow_symbol_change": true,
         "container_id": "tradingview_chart"
       }});
       </script>
     </div>
     """
-    components.html(html_code, height=520)
+    # Buradaki height değerini 750 yaparak Streamlit içindeki alanı da büyütüyoruz
+    components.html(html_code, height=750)
 
 # Veri Çekme (Analiz İçin)
 @st.cache_data(ttl=10)
@@ -133,3 +132,4 @@ try:
         st.warning("Hisse verisi yükleniyor veya kod hatalı...")
 except Exception as e:
     st.error(f"Bağlantı hatası: {e}")
+
