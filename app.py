@@ -1,64 +1,89 @@
 import streamlit as st
 import yfinance as yf
-from streamlit_autorefresh import st_autorefresh
-import streamlit.components.v1 as components
+import pandas as pd
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-# Sayfa Ayarları
-st.set_page_config(page_title="BIST Terminal", layout="wide", initial_sidebar_state="collapsed")
+# 1. Sayfa Ayarları
+st.set_page_config(page_title="Gürkan BIST Terminal", layout="wide")
 
-# 5 dakikada bir yenileme
-st_autorefresh(interval=5 * 60 * 1000, key="refresh")
+# Üst boşluğu silmek için CSS
+st.markdown("<style>.block-container { padding-top: 1rem; }</style>", unsafe_allow_html=True)
 
-# --- ÜST PANEL ---
+# 2. Üst Panel (Hisse Seçimi)
 col_ara, col_fav, col_metrik = st.columns([1, 1, 1.2])
 
 if 'favoriler' not in st.session_state:
-    st.session_state.favoriler = ["THYAO.IS", "EREGL.IS", "ASELS.IS", "ISCTR.IS"]
+    st.session_state.favoriler = ["THYAO.IS", "EREGL.IS", "ASELS.IS", "ISCTR.IS", "SASA.IS"]
 
 with col_ara:
-    hisse_input = st.text_input("🔍 Hisse Ara (Örn: SASA):", "").upper().strip()
+    hisse_input = st.text_input("🔍 BIST Hisse Kod (Örn: SASA):", "").upper().strip()
 
 with col_fav:
     secilen_fav = st.selectbox("⭐ Favoriler:", st.session_state.favoriler)
 
-# Aktif Hisse Belirleme
-aktif_temiz = hisse_input.split(".")[0] if hisse_input else secilen_fav.split(".")[0]
-aktif_yfinance = aktif_temiz + ".IS"
+# Aktif Hisse Mantığı
+aktif_hisse = (hisse_input if "." in hisse_input else hisse_input + ".IS") if hisse_input else secilen_fav
+aktif_temiz = aktif_hisse.replace(".IS", "")
 
-with col_metrik:
-    try:
-        data = yf.download(aktif_yfinance, period="2d", interval="1m", progress=False)
-        if not data.empty:
-            fiyat = float(data['Close'].iloc[-1])
-            st.metric(f"{aktif_temiz}", f"{fiyat:.2f} TL")
-    except:
-        st.write("Fiyat yükleniyor...")
-
-# --- CANLI GRAFİK (SIFIR HATA VE BIST GARANTİLİ) ---
-def final_tradingview(ticker):
-    # Bu URL yapısı TradingView'in en stabil gömme formatıdır
-    # ticker: BIST:THYAO formatında gönderilir
-    tv_ticker = f"BIST:{ticker}"
+# 3. Veri Çekme (Yahoo Finance üzerinden doğrudan BIST)
+try:
+    df = yf.download(aktif_hisse, period="5d", interval="1m", progress=False)
     
-    html_code = f"""
-    <div style="height:550px; width:100%;">
-        <iframe 
-            src="https://s.tradingview.com/widgetembed/?symbol={tv_ticker}&interval=D&hidesidetoolbar=0&symboledit=1&saveimage=1&toolbarbg=f1f3f6&studies=[]&theme=light&style=1&timezone=Europe%2FIstanbul&locale=tr"
-            width="100%" 
-            height="550" 
-            frameborder="0" 
-            allowtransparency="true" 
-            scrolling="no" 
-            allowfullscreen>
-        </iframe>
-    </div>
-    """
-    components.html(html_code, height=560)
+    if not df.empty:
+        # Fiyat Bilgileri
+        son_fiyat = float(df['Close'].iloc[-1])
+        onceki_kapanis = float(df['Close'].iloc[0])
+        degisim = ((son_fiyat - onceki_kapanis) / onceki_kapanis) * 100
 
-st.divider()
-st.subheader(f"📊 {aktif_temiz} Canlı Grafik")
-final_tradingview(aktif_temiz)
+        with col_metrik:
+            st.metric(f"{aktif_temiz} (BIST)", f"{son_fiyat:.2f} TL", f"%{degisim:.2f}")
 
-# --- ALT PANEL ---
-if not data.empty:
-    st.link_button(f"📰 {aktif_temiz} Haberlerini Oku", f"https://www.google.com/search?q={aktif_temiz}+hisse+haberleri&tbm=nws", use_container_width=True)
+        # 4. Profesyonel Plotly Grafiği (Mum + Hacim)
+        fig = make_subplots(rows=2, cols=1, shared_xaxes=True, 
+                           vertical_spacing=0.03, subplot_titles=(f'{aktif_temiz} Mum Grafik', 'Hacim'), 
+                           row_width=[0.2, 0.7])
+
+        # Mum Grafik
+        fig.add_trace(go.Candlestick(
+            x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'],
+            name="Fiyat"
+        ), row=1, col=1)
+
+        # Hareketli Ortalama (MA20)
+        df['MA20'] = df['Close'].rolling(window=20).mean()
+        fig.add_trace(go.Scatter(x=df.index, y=df['MA20'], line=dict(color='yellow', width=1), name="MA20"), row=1, col=1)
+
+        # Hacim (Volume)
+        fig.add_trace(go.Bar(x=df.index, y=df['Volume'], name="Hacim", marker_color='dodgerblue'), row=2, col=1)
+
+        fig.update_layout(
+            template="plotly_dark",
+            xaxis_rangeslider_visible=False,
+            height=600,
+            margin=dict(l=10, r=10, t=30, b=10),
+            showlegend=False
+        )
+
+        st.plotly_chart(fig, use_container_width=True)
+
+        # 5. RSI Analizi ve Haberler
+        c1, c2 = st.columns(2)
+        with c1:
+            delta = df['Close'].diff()
+            gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+            loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+            rsi = 100 - (100 / (1 + (gain/loss))).iloc[-1]
+            
+            if rsi > 70: st.error(f"🚨 RSI: {rsi:.1f} - Aşırı Alım (Düşüş Riski)")
+            elif rsi < 30: st.success(f"🚀 RSI: {rsi:.1f} - Aşırı Satım (Tepki Alımı)")
+            else: st.info(f"⚖️ RSI: {rsi:.1f} - Nötr")
+
+        with c2:
+            st.link_button("📰 Haberleri Oku", f"https://www.google.com/search?q={aktif_temiz}+hisse+haberleri&tbm=nws", use_container_width=True)
+
+    else:
+        st.warning(f"⚠️ {aktif_hisse} verisi alınamadı. Kodun doğruluğunu kontrol et.")
+
+except Exception as e:
+    st.error(f"Hata: {e}")
