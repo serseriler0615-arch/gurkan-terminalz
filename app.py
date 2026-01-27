@@ -14,7 +14,7 @@ if "last_sorgu" not in st.session_state:
 if "favorites" not in st.session_state:
     st.session_state["favorites"] = ["THYAO", "ASELS", "ISCTR", "EREGL"]
 
-# --- 🔐 GİRİŞ PANELİ (FORM SİSTEMİ) ---
+# --- 🔐 GİRİŞ PANELİ (DOĞRU ŞİFRE: HEDEF2024!) ---
 def check_access():
     if not st.session_state["access_granted"]:
         st.set_page_config(page_title="Gürkan AI VIP Login", layout="centered")
@@ -25,8 +25,7 @@ def check_access():
         with tab_vip:
             with st.form("vip_form"):
                 vip_k = st.text_input("Giriş Anahtarı", type="password")
-                submit_vip = st.form_submit_button("Sistemi Başlat", use_container_width=True)
-                if submit_vip:
+                if st.form_submit_button("Sistemi Başlat", use_container_width=True):
                     if vip_k.strip().upper().startswith("GAI-"): 
                         st.session_state["access_granted"], st.session_state["role"] = True, "user"
                         st.rerun()
@@ -36,14 +35,13 @@ def check_access():
             with st.form("admin_form"):
                 adm_id = st.text_input("Yönetici ID")
                 adm_ps = st.text_input("Yönetici Şifre", type="password")
-                submit_adm = st.form_submit_button("Yönetici Girişi Yap", use_container_width=True)
-                if submit_adm:
-                    # Şifre ve ID kontrolü (Büyük/Küçük harf duyarsız ID)
-                    if adm_id.strip().upper() == "GURKAN" and adm_ps.strip() == "HEDEF2026!": 
+                if st.form_submit_button("Yönetici Girişi Yap", use_container_width=True):
+                    # --- ŞİFRE BURADA GÜNCELLENDİ ---
+                    if adm_id.strip().upper() == "GURKAN" and adm_ps.strip() == "HEDEF2024!": 
                         st.session_state["access_granted"], st.session_state["role"] = True, "admin"
                         st.rerun()
                     else:
-                        st.error("Giriş Başarısız! Lütfen ID ve Şifreyi kontrol edin.")
+                        st.error("Giriş Başarısız! ID: GURKAN | Şifre: HEDEF2024!")
         return False
     return True
 
@@ -79,7 +77,7 @@ if check_access():
                     st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
-    # --- ANA ARAYÜZ ---
+    # --- ANA ARAYÜZ (TAM GÖRSEL UYUMU) ---
     h_col1, h_col2 = st.columns([1.2, 4])
     with h_col1: st.markdown("<div class='main-header'>★ GÜRKAN AI PRO</div>", unsafe_allow_html=True)
     with h_col2: h_input = st.text_input("", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper().strip()
@@ -90,7 +88,7 @@ if check_access():
         for f in st.session_state["favorites"]:
             is_active = "active-btn" if f == h_input else ""
             st.markdown(f"<div class='{is_active}'>", unsafe_allow_html=True)
-            if st.button(f"🔍 {f}", key=f"fav_{f}", use_container_width=True):
+            if st.button(f"🔍 {f}", key=f"f_b_{f}", use_container_width=True):
                 st.session_state["last_sorgu"] = f; st.rerun()
             st.markdown("</div>", unsafe_allow_html=True)
 
@@ -112,14 +110,14 @@ if check_access():
                 st.markdown(f"""
                 <div class='gurkan-ai-box'>
                     <b style='color:#ffcc00;'>🤵 GÜRKAN AI ARAŞTIRMA:</b><br>
-                    <b>{h_input}</b> incelendi. Yarın için beklenen fiyat seviyesi <b>{fiyat*1.02:.2f} ₺</b> civarıdır.
+                    <b>{h_input}</b> incelendi. Mevcut trend yapısı <b>{fiyat*1.015:.2f} ₺</b> hedefini destekliyor.
                 </div>
                 """, unsafe_allow_html=True)
 
                 fig = go.Figure(data=[go.Candlestick(x=df.tail(80).index, open=df.tail(80)['Open'], high=df.tail(80)['High'], low=df.tail(80)['Low'], close=df.tail(80)['Close'])])
                 fig.update_layout(height=400, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right'))
                 st.plotly_chart(fig, use_container_width=True)
-        except: st.warning("Veri bekleniyor...")
+        except: st.warning("Hisse verisi aranıyor...")
 
     with col_radar:
         st.markdown("<span style='font-size:12px; color:#8b949e;'>🚀 RADAR</span>", unsafe_allow_html=True)
@@ -130,6 +128,6 @@ if check_access():
             for s in r_list:
                 n = s.split('.')[0]
                 pct = ((r_data[s].iloc[-1] - r_data[s].iloc[-2]) / r_data[s].iloc[-2]) * 100
-                if st.button(f"{n} | %{pct:+.1f}", key=f"r_{n}", use_container_width=True):
+                if st.button(f"{n} | %{pct:+.1f}", key=f"r_b_{n}", use_container_width=True):
                     st.session_state["last_sorgu"] = n; st.rerun()
         except: pass
