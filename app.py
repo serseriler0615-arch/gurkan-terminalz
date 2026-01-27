@@ -25,119 +25,96 @@ def check_access():
 if check_access():
     st.set_page_config(page_title="Gürkan AI VIP Pro", layout="wide", initial_sidebar_state="collapsed")
 
-    # --- 🎨 KOMPAKT DARK CSS ---
+    # --- 🎨 İDEAL DARK UI CSS ---
     st.markdown("""
         <style>
         .stApp { background-color: #05070a !important; }
-        /* Yazı Boyutlarını Küçült */
-        h3 { font-size: 14px !important; margin-bottom: 5px !important; color: #00ff88 !important; }
-        p, div, span { font-size: 12px !important; color: #e0e0e0 !important; }
         
-        /* Boşlukları (Padding) Daralt */
-        .block-container { padding-top: 1rem !important; padding-bottom: 0rem !important; }
-        .stButton > button {
-            padding: 2px 5px !important;
-            min-height: 25px !important;
-            font-size: 11px !important;
-            background-color: rgba(0, 255, 136, 0.05) !important;
+        /* Başlıklar ve Metinler */
+        h3 { font-size: 16px !important; color: #00ff88 !important; margin-bottom: 10px !important; }
+        p, span, div { color: #e0e0e0 !important; font-size: 13px !important; }
+        
+        /* Butonlar: Beyazlık Tamamen Kaldırıldı */
+        div.stButton > button {
+            background-color: rgba(0, 255, 136, 0.03) !important;
             color: #00ff88 !important;
-            border: 1px solid #30363d !important;
+            border: 1px solid #1c2128 !important;
+            border-radius: 6px !important;
+            padding: 5px 10px !important;
+            transition: all 0.2s ease !important;
         }
-        
-        /* Gürkan AI Yorum Kutusu Sıkıştırma */
-        .asistan-box { 
-            background: #0d1117; 
-            border-left: 3px solid #00ff88; 
-            padding: 8px 12px; 
-            border-radius: 5px; 
-            margin-bottom: 10px;
-            line-height: 1.2;
+        div.stButton > button:hover {
+            border-color: #00ff88 !important;
+            background-color: rgba(0, 255, 136, 0.1) !important;
+            box-shadow: 0 0 10px rgba(0,255,136,0.2);
         }
 
-        /* Skor Kutusu Sıkıştırma */
+        /* Gürkan AI Yorum Kutusu */
+        .asistan-box { 
+            background: #0d1117; 
+            border: 1px solid #1c2128;
+            border-left: 4px solid #00ff88; 
+            padding: 12px; 
+            border-radius: 8px; 
+            margin-bottom: 15px;
+        }
+
+        /* Skor ve Metrikler */
         .skor-box { 
             background: #0d1117; 
             border: 1px solid #00ff88; 
-            border-radius: 8px; 
-            padding: 5px; 
+            border-radius: 10px; 
+            padding: 10px; 
             text-align: center;
         }
-
-        /* Metrikleri Küçült */
-        [data-testid="stMetricValue"] { font-size: 18px !important; }
-        [data-testid="stMetricDelta"] { font-size: 12px !important; }
+        [data-testid="stMetricValue"] { font-size: 22px !important; color: #ffffff !important; }
+        
+        /* Input Alanı */
+        .stTextInput > div > div > input {
+            background-color: #0d1117 !important;
+            border: 1px solid #1c2128 !important;
+            color: #00ff88 !important;
+            font-weight: bold !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
-    # Üst Bilgi Satırı (Çok İnce)
-    col_fav, col_main, col_radar = st.columns([0.6, 3, 0.9])
+    # Ana Düzen: Sol (Favori), Orta (Analiz), Sağ (Radar)
+    col_fav, col_main, col_radar = st.columns([0.7, 3, 1])
 
-    # 1. SOL: FAVORİLER (Daraltılmış)
+    # 1. SOL: FAVORİLER
     with col_fav:
-        st.markdown("### ⭐ FAVORİ")
-        for f in st.session_state["favorites"][-6:]:
-            if st.button(f"{f}", key=f"f_btn_{f}"):
+        st.markdown("### ⭐ FAVORİLER")
+        for f in st.session_state["favorites"][-7:]:
+            if st.button(f"🔍 {f}", key=f"fav_{f}", use_container_width=True):
                 st.session_state["last_sorgu"] = f; st.rerun()
         
-        y_fav = st.text_input("", key="f_add", placeholder="+Ekle", label_visibility="collapsed").upper().strip()
-        if y_fav and len(y_fav) > 2:
-            if y_fav not in st.session_state["favorites"]: st.session_state["favorites"].append(y_fav); st.rerun()
+        st.write("") # Boşluk
+        new_fav = st.text_input("", placeholder="+Ekle", key="add_f", label_visibility="collapsed").upper().strip()
+        if new_fav and len(new_fav) > 2 and st.button("LİSTEYE EKLE"):
+            if new_fav not in st.session_state["favorites"]: st.session_state["favorites"].append(new_fav); st.rerun()
 
-    # 2. ORTA: ANA PANEL (Full Sıkıştırılmış)
+    # 2. ORTA: ANA ANALİZ
     with col_main:
-        # Sorgu ve Skor Yan Yana
-        head1, head2 = st.columns([2, 1])
-        with head1:
-            h_input = st.text_input("", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper().strip()
-        
+        # Arama Barı
+        h_input = st.text_input("HİSSE SORGULA", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper().strip()
         sembol = h_input if "." in h_input else h_input + ".IS"
         
         try:
-            df = yf.download(sembol, period="3mo", interval="1d", progress=False)
+            df = yf.download(sembol, period="6mo", interval="1d", progress=False)
             if not df.empty:
                 if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-                fiyat, onceki = float(df['Close'].iloc[-1]), float(df['Close'].iloc[-2])
-                degisim = ((fiyat - onceki) / onceki) * 100
                 
-                # Teknik Hesaplama (Hızlı)
+                fiyat = float(df['Close'].iloc[-1])
+                degisim = ((fiyat - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
                 ma20 = df['Close'].rolling(20).mean().iloc[-1]
                 delta = df['Close'].diff(); gain = (delta.where(delta>0,0)).rolling(14).mean(); loss = (-delta.where(delta<0,0)).rolling(14).mean()
                 rsi = 100 - (100 / (1 + (gain/loss))).iloc[-1]
-                skor = (40 if fiyat > ma20 else 0) + (40 if 45 < rsi < 70 else 0) + (20 if degisim > 0 else 0)
+                skor = (40 if fiyat > ma20 else 0) + (40 if 45 < rsi < 75 else 0) + (20 if degisim > 0 else 0)
 
-                # Mini Metrik Satırı
-                m1, m2, m3, m4 = st.columns(4)
-                m1.metric("FİYAT", f"{fiyat:.2f}")
-                m2.metric("DEĞİŞİM", f"%{degisim:.2f}")
+                # Üst Bilgi Satırı
+                m1, m2, m3, m4 = st.columns([1, 1, 1, 1.2])
+                m1.metric("FİYAT", f"{fiyat:.2f} TL")
+                m2.metric("GÜNLÜK", f"%{degisim:.2f}")
                 m3.metric("RSI", f"{rsi:.1f}")
-                with m4: st.markdown(f"<div class='skor-box'><span style='font-size:9px;'>GÜVEN</span><br><b style='color:#00ff88;'>%{int(skor)}</b></div>", unsafe_allow_html=True)
-
-                # GÜRKAN AI YORUMU (Daha İnce)
-                st.markdown(f"""<div class='asistan-box'><b style='color:#00ff88;'>🤵 AI:</b> {h_input} %{int(skor)} güven puanında. {'Trend pozitif.' if skor > 60 else 'Bekle-gör.'}</div>""", unsafe_allow_html=True)
-
-                # GRAFİK (Yüksekliği Azaltılmış)
-                fig = go.Figure(data=[go.Scatter(x=df.tail(35).index, y=df.tail(35)['Close'], fill='tozeroy', line=dict(color='#00ff88', width=2), fillcolor='rgba(0,255,136,0.05)')])
-                fig.update_layout(height=220, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False, tickfont=dict(size=10)), yaxis=dict(showgrid=True, gridcolor='#1c2128', side='right', tickfont=dict(size=10)))
-                st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-        except: st.error("Bağlantı...")
-
-    # 3. SAĞ: RADAR (Sıkışık)
-    with col_radar:
-        st.markdown("### 🚀 RADAR")
-        tara_list = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "TUPRS.IS", "AKBNK.IS", "SISE.IS", "KCHOL.IS", "BIMAS.IS"]
-        try:
-            r_data = yf.download(tara_list, period="2d", interval="1d", progress=False)['Close']
-            if isinstance(r_data.columns, pd.MultiIndex): r_data.columns = r_data.columns.get_level_values(0)
-            for s in tara_list:
-                name = s.split('.')[0]
-                try:
-                    c, p = r_data[s].iloc[-1], r_data[s].iloc[-2]
-                    pct = ((c - p) / p) * 100
-                    if st.button(f"{name} %{pct:.1f}", key=f"r_{name}"):
-                        st.session_state["last_sorgu"] = name; st.rerun()
-                except: continue
-        except: pass
-
-    # Admin (En Alt Gizli)
-    if st.session_state.get("role") == "admin":
-        if st.button("🔑"): st.code(f"GAI-{int(time.time())}-VIP")
+                with m4: st.markdown(f"<div class='skor-box'><span style='font-size:11px; color:#8b949e;'>VIP
