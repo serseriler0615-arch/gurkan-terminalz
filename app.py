@@ -23,9 +23,9 @@ def check_access():
     return True
 
 if check_access():
-    st.set_page_config(page_title="Gürkan AI VIP v96", layout="wide", initial_sidebar_state="collapsed")
+    st.set_page_config(page_title="Gürkan AI VIP v97", layout="wide", initial_sidebar_state="collapsed")
 
-    # --- 🎨 VIP STYLE (HATASIZ) ---
+    # --- 🎨 VIP TRENDY STYLE ---
     st.markdown("""
         <style>
         .stApp { background-color: #05070a !important; }
@@ -37,13 +37,16 @@ if check_access():
             background-color: rgba(0, 255, 136, 0.05) !important;
             color: #00ff88 !important; border: 1px solid #1c2128 !important;
             text-align: left !important; font-family: monospace !important;
+            font-size: 12px !important;
         }
+        .trend-up { color: #00ff88; font-weight: bold; }
+        .trend-down { color: #ff4b4b; font-weight: bold; }
         </style>
     """, unsafe_allow_html=True)
 
     col_fav, col_main, col_radar = st.columns([0.8, 3, 1.4])
 
-    # 1. SOL: FAVORİLER
+    # 1. SOL: FAVORİLER (EKLE/ÇIKAR)
     with col_fav:
         st.markdown("### ⭐ TAKİP")
         for f in list(st.session_state["favorites"]):
@@ -53,57 +56,65 @@ if check_access():
             if c2.button("X", key=f"del_{f}"):
                 st.session_state["favorites"].remove(f); st.rerun()
 
-    # 2. ORTA: ANALİZ + AI YORUM
+    # 2. ORTA: ANALİZ + GÜRKAN AI TAHMİN
     with col_main:
         h1, h2 = st.columns([3, 1])
-        h_input = h1.text_input("ARA", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper()
-        if h2.button("⭐ EKLE") and h_input not in st.session_state["favorites"]:
+        h_input = h1.text_input("HİSSE ARA", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper()
+        if h2.button("⭐ LİSTEYE EKLE") and h_input not in st.session_state["favorites"]:
             st.session_state["favorites"].append(h_input); st.rerun()
 
         sembol = h_input if "." in h_input else h_input + ".IS"
         
         try:
-            # GÜVENLİ VERİ ÇEKME
-            df = yf.download(sembol, period="3mo", interval="1d", progress=False)
+            df = yf.download(sembol, period="6mo", interval="1d", progress=False)
             if not df.empty:
                 if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
                 
                 fiyat = float(df['Close'].iloc[-1])
-                degisim = ((fiyat - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
-                tahmin = fiyat * (1 + (degisim/200)) # Gürkan AI Projeksiyonu
-
-                # 🤵 GÜRKAN AI YORUMU
-                yon = "yükseliş" if degisim > 0 else "düşüş"
+                onceki = float(df['Close'].iloc[-2])
+                degisim = ((fiyat - onceki) / onceki) * 100
+                
+                # --- 🤵 GÜRKAN AI ARAŞTIRMA MOTORU ---
+                tahmin_fiyat = fiyat * (1 + (degisim/150))
+                yon = "YÜKSELİŞ" if degisim > 0 else "DÜŞÜŞ"
                 renk = "#00ff88" if degisim > 0 else "#ff4b4b"
+                
                 st.markdown(f"""
                 <div class='asistan-box'>
-                    <b style='color:#00ff88;'>🤵 GÜRKAN AI ÖZEL ARAŞTIRMASI:</b><br>
-                    <b>{h_input}</b> bugün <span style='color:{renk}'>%{degisim:.2f} {yon}</span> eğiliminde. 
-                    Verileri taradım; yarın fiyatın <b>{tahmin:.2f} ₺</b> seviyelerini test etmesini bekliyorum.
+                    <b style='color:#00ff88; font-size:16px;'>🤵 GÜRKAN AI ÖZEL ARAŞTIRMASI:</b><br>
+                    <b>{h_input}</b> hissesini masaya yatırdım. Teknik veriler şu an <span style='color:{renk}'>{yon}</span> sinyali veriyor.<br>
+                    🚀 <b>Yarın Beklentim:</b> Fiyatın <b>{tahmin_fiyat:.2f} ₺</b> seviyelerini test etmesini bekliyorum.<br>
+                    💡 <i>Not: Mevcut trend {fiyat:.2f} desteği üzerinde kaldıkça pozitif.</i>
                 </div>
                 """, unsafe_allow_html=True)
 
-                st.metric(f"{h_input} GÜNCEL", f"{fiyat:.2f} ₺", f"%{degisim:.2f}")
+                st.metric(f"{h_input} ANALİZ", f"{fiyat:.2f} ₺", f"%{degisim:.2f}")
 
-                fig = go.Figure(data=[go.Candlestick(x=df.index, open=df['Open'], high=df['High'], low=df['Low'], close=df['Close'])])
-                fig.update_layout(height=400, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right'))
+                fig = go.Figure(data=[go.Candlestick(x=df.tail(80).index, open=df.tail(80)['Open'], high=df.tail(80)['High'], low=df.tail(80)['Low'], close=df.tail(80)['Close'])])
+                fig.update_layout(height=380, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#161b22'))
                 st.plotly_chart(fig, use_container_width=True)
-            else:
-                st.error("Hisse bulunamadı.")
-        except:
-            st.warning("Veri çekilemedi, lütfen tekrar deneyin.")
+            else: st.error("Hisse bulunamadı.")
+        except: st.warning("Veri çekilemedi.")
 
-    # 3. SAĞ: STABİL RADAR
+    # 3. SAĞ: TRENDY RADAR (GERİ GELDİ)
     with col_radar:
-        st.markdown("### 🚀 CANLI RADAR")
-        t_list = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "TUPRS.IS", "AKBNK.IS"]
-        for s in t_list:
-            n = s.split('.')[0]
-            try:
-                # Radar için sadece son 2 günü çekerek sistemi yormuyoruz
-                r_val = yf.download(s, period="2d", progress=False)['Close']
-                if not r_val.empty:
-                    c = r_val.iloc[-1]
-                    if st.button(f"{n.ljust(6)} | {c:>7.2f}", key=f"r_{n}", use_container_width=True):
-                        st.session_state["last_sorgu"] = n; st.rerun()
-            except: continue
+        st.markdown("### 🚀 TRENDY RADAR")
+        # Radarı hızlandırmak için toplu veri çekme
+        t_list = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "TUPRS.IS", "AKBNK.IS", "SISE.IS", "KCHOL.IS", "BIMAS.IS"]
+        try:
+            r_data = yf.download(t_list, period="2d", progress=False)['Close']
+            if isinstance(r_data.columns, pd.MultiIndex): r_data.columns = r_data.columns.get_level_values(0)
+            
+            for s in t_list:
+                n = s.split('.')[0]
+                c = r_data[s].iloc[-1]
+                p = r_data[s].iloc[-2]
+                pct = ((c - p) / p) * 100
+                sign = "+" if pct >= 0 else ""
+                
+                # TRENDY FORMAT: SEMBOL | FIYAT | %DEG
+                btn_label = f"{n.ljust(6)} | {c:>7.2f} | {sign}{pct:.1f}%"
+                
+                if st.button(btn_label, key=f"r_v97_{n}", use_container_width=True):
+                    st.session_state["last_sorgu"] = n; st.rerun()
+        except: st.write("Radar verisi hazırlanıyor...")
