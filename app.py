@@ -3,7 +3,7 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 
-# --- 1. OTURUM AYARLARI ---
+# --- 1. SİSTEM AYARLARI ---
 if "access_granted" not in st.session_state: st.session_state["access_granted"] = False
 if "role" not in st.session_state: st.session_state["role"] = "user"
 if "last_sorgu" not in st.session_state: st.session_state["last_sorgu"] = "ISCTR"
@@ -23,10 +23,22 @@ def check_access():
         return False
     return True
 
+# Hızlı RSI Hesaplama (Radar için)
+def get_quick_rsi(symbol):
+    try:
+        data = yf.download(symbol + ".IS", period="1mo", interval="1d", progress=False)
+        if data.empty: return 50
+        delta = data['Close'].diff()
+        gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
+        loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
+        rs = gain / loss
+        return 100 - (100 / (1 + rs.iloc[-1]))
+    except: return 50
+
 if check_access():
     st.set_page_config(page_title="Gürkan AI PRO", layout="wide", initial_sidebar_state="collapsed")
 
-    # --- 🎨 KOMPAKT & RENKLİ CSS ---
+    # --- 🎨 STİL ---
     st.markdown("""
         <style>
         .stApp { background-color: #0b0d11 !important; }
@@ -40,7 +52,7 @@ if check_access():
         .neon-red { color: #ff4b4b; text-shadow: 0 0 8px #ff4b4b; font-weight: bold; font-size: 18px !important; }
         .text-blue { color: #00d4ff; font-weight: bold; font-size: 13px; }
         .strat-badge { padding: 3px 10px; border-radius: 5px; font-weight: bold; color: black; font-size: 11px; text-transform: uppercase; }
-        div.stButton > button { height: 32px !important; font-size: 12px !important; }
+        div.stButton > button { height: 32px !important; font-size: 11px !important; }
         [data-testid="stMetricValue"] { font-size: 18px !important; }
         p, span { font-size: 13px !important; }
         </style>
@@ -53,7 +65,7 @@ if check_access():
         if st.button("➕"):
             if h_input not in st.session_state["favorites"]: st.session_state["favorites"].append(h_input); st.rerun()
 
-    col_fav, col_main, col_radar = st.columns([0.8, 4, 1])
+    col_fav, col_main, col_radar = st.columns([0.8, 4, 1.2])
 
     with col_fav:
         st.markdown("<p style='color:#8b949e; font-weight:bold;'>LİSTE</p>", unsafe_allow_html=True)
@@ -84,11 +96,10 @@ if check_access():
                 elif last_p > ma20: strat, color, c_txt = "TREND POZİTİF", "#00ff88", f"Fiyat {ma20:.2f} ortalamasının üstünde, güç kazanıyor."
                 else: strat, color, c_txt = "ZAYIF SEYİR", "#ffcc00", "Trend zayıf, destek seviyeleri yakından izlenmeli."
 
-                m1, m2, m3, m4 = st.columns(4)
-                m1.metric("FİYAT", f"{last_p:.2f}")
-                m2.metric("DEĞİŞİM", f"%{change:+.2f}")
-                m3.metric("RSI", f"{rsi:.1f}")
-                m4.metric("VOL.", f"%{volatility:.1f}")
+                st.columns(4)[0].metric("FİYAT", f"{last_p:.2f}")
+                st.columns(4)[1].metric("DEĞİŞİM", f"%{change:+.2f}")
+                st.columns(4)[2].metric("RSI", f"{rsi:.1f}")
+                st.columns(4)[3].metric("VOL.", f"%{volatility:.1f}")
 
                 st.markdown(f"""
                 <div class='gurkan-pro-box'>
@@ -104,19 +115,21 @@ if check_access():
                             <span style='color:#8b949e; font-size:10px;'>⚠️ RİSK</span><br><span class='neon-red'>- %{down_risk}</span>
                         </div>
                     </div>
-                    <p style='margin-top:12px; line-height:1.5;'>
-                        <b>Yorum:</b> {c_txt}<br>
-                        <span class='text-blue'>{h_input}</span> Hedef: <b>{last_p*(1+up_pot/100):.2f} ₺</b> | Destek: <b>{last_p*(1-down_risk/100):.2f} ₺</b>
-                    </p>
+                    <p style='margin-top:12px;'><b>Yorum:</b> {c_txt}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-                fig = go.Figure(data=[go.Candlestick(x=df.tail(70).index, open=df.tail(70)['Open'], high=df.tail(70)['High'], low=df.tail(70)['Low'], close=df.tail(70)['Close'])])
-                fig.update_layout(height=360, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#1c2128', tickfont=dict(size=9)))
+                fig = go.Figure(data=[go.Candlestick(x=df.tail(65).index, open=df.tail(65)['Open'], high=df.tail(65)['High'], low=df.tail(65)['Low'], close=df.tail(65)['Close'])])
+                fig.update_layout(height=350, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#1c2128', tickfont=dict(size=9)))
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
         except: st.empty()
 
     with col_radar:
-        st.markdown("<p style='color:#8b949e; font-weight:bold;'>RADAR</p>", unsafe_allow_html=True)
-        for r in ["THYAO", "ASELS", "EREGL", "TUPRS", "AKBNK"]:
-            if st.button(f"⚡ {r}", key=f"r_{r}", use_container_width=True): st.session_state["last_sorgu"] = r; st.rerun()
+        st.markdown("<p style='color:#8b949e; font-weight:bold;'>RADAR (CANLI RSI)</p>", unsafe_allow_html=True)
+        radar_list = ["THYAO", "ASELS", "EREGL", "TUPRS", "AKBNK", "BIMAS"]
+        for r in radar_list:
+            # Radar zekası
+            r_rsi = get_quick_rsi(r)
+            icon = "🔴" if r_rsi > 70 else ("🟢" if r_rsi < 35 else "🟡")
+            if st.button(f"{icon} {r}", key=f"r_{r}", use_container_width=True):
+                st.session_state["last_sorgu"] = r; st.rerun()
