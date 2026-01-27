@@ -24,55 +24,60 @@ def check_access():
             if st.button("Sistemi Aç"):
                 if k.startswith("GAI-"): 
                     st.session_state["access_granted"], st.session_state["role"] = True, "user"; st.rerun()
-        with t2:
-            u, p = st.text_input("ID"), st.text_input("Şifre", type="password")
-            if st.button("Admin Giriş"):
-                if u.upper() == "GURKAN" and p == "HEDEF2024!": 
-                    st.session_state["access_granted"], st.session_state["role"] = True, "admin"; st.rerun()
         return False
     return True
 
 if check_access():
     st.set_page_config(page_title="Gürkan AI VIP Pro", layout="wide", initial_sidebar_state="collapsed")
 
-    # --- 🎨 DARK & NEON UI ---
+    # --- 🎨 VIP STYLE ---
     st.markdown("""
         <style>
         .stApp { background-color: #05070a !important; }
-        h3 { font-size: 14px !important; color: #00ff88 !important; margin-bottom: 10px !important; text-transform: uppercase; letter-spacing: 1px; }
-        p, span, div { color: #e0e0e0 !important; font-size: 13px !important; }
+        h3 { font-size: 14px !important; color: #00ff88 !important; letter-spacing: 1px; }
         
-        /* Radar Butonları: Fiyatlı ve Daha Geniş */
+        /* Radar Butonları: Sinyal Destekli */
         div.stButton > button {
             background-color: rgba(0, 255, 136, 0.02) !important;
             color: #00ff88 !important;
             border: 1px solid #1c2128 !important;
             border-radius: 4px !important;
-            transition: 0.2s ease;
-            text-align: left !important;
-            font-family: 'Courier New', Courier, monospace !important;
-            font-size: 12px !important;
+            font-family: 'Courier New', monospace !important;
+            font-size: 11px !important;
             margin-bottom: -5px !important;
+            text-align: left !important;
         }
-        div.stButton > button:hover { 
-            border-color: #00ff88 !important; 
-            background: rgba(0,255,136,0.1) !important;
-            box-shadow: 0 0 10px rgba(0,255,136,0.1);
-        }
+        div.stButton > button:hover { border-color: #00ff88 !important; background: rgba(0,255,136,0.1) !important; }
 
-        .asistan-box { background: #0d1117; border-left: 4px solid #00ff88; padding: 10px; border-radius: 8px; border: 1px solid #1c2128; line-height: 1.4; }
+        .asistan-box { background: #0d1117; border-left: 4px solid #00ff88; padding: 10px; border-radius: 8px; border: 1px solid #1c2128; }
         .skor-box { background: #0d1117; border: 1px solid #00ff88; border-radius: 10px; padding: 8px; text-align: center; }
-        [data-testid="stMetricValue"] { font-size: 20px !important; color: #fff !important; font-weight: 700 !important; }
+        [data-testid="stMetricValue"] { font-size: 20px !important; color: #fff !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    col_fav, col_main, col_radar = st.columns([0.7, 3, 1.2])
+    col_fav, col_main, col_radar = st.columns([0.7, 3, 1.4])
+
+    # --- HIZLI ANALİZ FONKSİYONU ---
+    def get_signal(hisse_df):
+        try:
+            c = hisse_df['Close'].iloc[-1]
+            p = hisse_df['Close'].iloc[-2]
+            ma20 = hisse_df['Close'].rolling(20).mean().iloc[-1]
+            # RSI
+            delta = hisse_df['Close'].diff(); g = (delta.where(delta>0,0)).rolling(14).mean(); l = (-delta.where(delta<0,0)).rolling(14).mean()
+            rsi = 100 - (100 / (1 + (g/l))).iloc[-1]
+            
+            if rsi < 35: return "🟢 AL"
+            if rsi > 70: return "🔴 SAT"
+            if c > ma20 and c > p: return "🟡 GÜÇ"
+            return "⚪ İZLE"
+        except: return "⚪ --"
 
     # 1. SOL: FAVORİLER
     with col_fav:
         st.markdown("### ⭐ TAKİP")
         for f in st.session_state["favorites"][-8:]:
-            if st.button(f"🔍 {f}", key=f"v86_f_{f}", use_container_width=True):
+            if st.button(f"🔍 {f}", key=f"v87_f_{f}", use_container_width=True):
                 st.session_state["last_sorgu"] = f; st.rerun()
 
     # 2. ORTA: ANALİZ VE GRAFİK
@@ -86,67 +91,64 @@ if check_access():
                 if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
                 
                 fiyat = float(df['Close'].iloc[-1])
-                onceki = float(df['Close'].iloc[-2])
-                degisim = ((fiyat - onceki) / onceki) * 100
+                degisim = ((fiyat - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
                 direnc, destek = df['High'].tail(60).max(), df['Low'].tail(60).min()
-                
-                # RSI Hesaplama
-                delta = df['Close'].diff(); g = (delta.where(delta>0,0)).rolling(14).mean(); l = (-delta.where(delta<0,0)).rolling(14).mean()
-                rsi_val = 100 - (100 / (1 + (g/l))).iloc[-1]
                 
                 m1, m2, m3, m4 = st.columns([1, 1, 1, 1.2])
                 m1.metric("FİYAT", f"{fiyat:.2f}")
                 m2.metric("GÜNLÜK", f"%{degisim:.2f}")
+                
+                # Dinamik RSI
+                delta = df['Close'].diff(); g = (delta.where(delta>0,0)).rolling(14).mean(); l = (-delta.where(delta<0,0)).rolling(14).mean()
+                rsi_val = 100 - (100 / (1 + (g/l))).iloc[-1]
                 m3.metric("RSI (14)", f"{rsi_val:.1f}")
-                with m4: st.markdown(f"<div class='skor-box'><span style='font-size:10px; color:#8b949e;'>VIP GÜVEN</span><br><b style='color:#00ff88; font-size:18px;'>%84</b></div>", unsafe_allow_html=True)
+                
+                skor_val = int((40 if fiyat > destek else 0) + (40 if rsi_val < 70 else 0) + 20)
+                with m4: st.markdown(f"<div class='skor-box'><span style='font-size:10px; color:#8b949e;'>VIP SKOR</span><br><b style='color:#00ff88; font-size:18px;'>%{skor_val}</b></div>", unsafe_allow_html=True)
 
-                st.markdown(f"<div class='asistan-box'><b style='color:#00ff88;'>🤵 GÜRKAN AI:</b> {h_input} hissesi şu an <b>{fiyat:.2f} TL</b>. Destek {destek:.2f} seviyesinde güçlü duruyor.</div>", unsafe_allow_html=True)
+                st.markdown(f"<div class='asistan-box'><b style='color:#00ff88;'>🤵 GÜRKAN AI:</b> {h_input} için sinyal tablosu sağda güncellendi. Grafik üzerinden yakınlaştırma yapabilirsin.</div>", unsafe_allow_html=True)
 
-                # --- ZOOM DESTEKLİ GRAFİK ---
                 fig = go.Figure()
-                fig.add_trace(go.Candlestick(
-                    x=df.tail(80).index, open=df.tail(80)['Open'], high=df.tail(80)['High'],
-                    low=df.tail(80)['Low'], close=df.tail(80)['Close'], name="Fiyat"
-                ))
-                fig.add_hline(y=direnc, line_dash="dash", line_color="#ff4b4b", opacity=0.3, annotation_text="DİRENÇ")
-                fig.add_hline(y=destek, line_dash="dash", line_color="#0088ff", opacity=0.3, annotation_text="DESTEK")
-
-                fig.update_layout(
-                    height=380, margin=dict(l=0,r=0,t=0,b=0),
-                    paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)',
-                    xaxis_rangeslider_visible=False,
-                    xaxis=dict(showgrid=False, tickformat="%d %b"),
-                    yaxis=dict(showgrid=True, gridcolor='#161b22', side='right'),
-                    dragmode='zoom'
-                )
+                fig.add_trace(go.Candlestick(x=df.tail(80).index, open=df.tail(80)['Open'], high=df.tail(80)['High'], low=df.tail(80)['Low'], close=df.tail(80)['Close'], name="Mum"))
+                fig.add_hline(y=direnc, line_dash="dash", line_color="#ff4b4b", opacity=0.3)
+                fig.add_hline(y=destek, line_dash="dash", line_color="#0088ff", opacity=0.3)
+                fig.update_layout(height=380, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, xaxis=dict(showgrid=False, tickformat="%d %b"), yaxis=dict(showgrid=True, gridcolor='#161b22', side='right'), dragmode='zoom')
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': True})
         except: st.error("Veri hatası.")
 
-    # 3. SAĞ: CANLI FİYATLI RADAR + ADMIN
+    # 3. SAĞ: SİNYAL DESTEKLİ RADAR
     with col_radar:
-        st.markdown("### 🚀 CANLI FİYAT TAHTASI")
+        st.markdown("### 🚀 VIP SİNYAL RADARI")
         t_list = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "TUPRS.IS", "AKBNK.IS", "SISE.IS", "KCHOL.IS", "BIMAS.IS"]
         try:
-            r_data = yf.download(t_list, period="2d", interval="1d", progress=False)['Close']
-            if isinstance(r_data.columns, pd.MultiIndex): r_data.columns = r_data.columns.get_level_values(0)
+            # Tüm radar verisini bir kerede çek
+            r_all = yf.download(t_list, period="1mo", interval="1d", progress=False)
+            if isinstance(r_all.columns, pd.MultiIndex):
+                close_data = r_all['Close']
+            else:
+                close_data = r_all
             
             for s in t_list:
                 n = s.split('.')[0]
                 try:
-                    c = r_data[s].iloc[-1]
-                    p = r_data[s].iloc[-2]
+                    h_df = r_all.xs(s, level=1, axis=1) if isinstance(r_all.columns, pd.MultiIndex) else r_all
+                    if isinstance(r_all.columns, pd.MultiIndex):
+                        h_df = r_all.iloc[:, r_all.columns.get_level_values(1) == s]
+                        h_df.columns = h_df.columns.get_level_values(0)
+                    
+                    c = h_df['Close'].iloc[-1]
+                    p = h_df['Close'].iloc[-2]
                     pct = ((c - p) / p) * 100
+                    sig = get_signal(h_df)
                     
-                    # Modern Fiyat Etiketi: SEMBOL | FIYAT | %DEG
-                    sign = "+" if pct >= 0 else ""
-                    btn_label = f"{n.ljust(6)} | {c:>7.2f} | {sign}{pct:.2f}%"
+                    # Buton Etiketi: SİNYAL | SEMBOL | FIYAT | %
+                    btn_label = f"{sig} | {n.ljust(5)} | {c:>7.2f} | {pct:+.1f}%"
                     
-                    if st.button(btn_label, key=f"v86_r_{n}", use_container_width=True):
+                    if st.button(btn_label, key=f"v87_r_{n}", use_container_width=True):
                         st.session_state["last_sorgu"] = n; st.rerun()
                 except: continue
-        except: st.warning("Fiyatlar yükleniyor...")
+        except: st.warning("Sinyaller taranıyor...")
 
         if st.session_state["role"] == "admin":
-            st.markdown("<br>### 🔐 ADMIN", unsafe_allow_html=True)
-            if st.button("💎 LİSANS ÜRET"):
-                st.code(f"GAI-{int(time.time())}-VIP")
+            st.markdown("---")
+            if st.button("💎 LİSANS ÜRET"): st.code(f"GAI-{int(time.time())}-VIP")
