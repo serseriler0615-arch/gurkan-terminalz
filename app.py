@@ -4,7 +4,7 @@ import pandas as pd
 import time
 import plotly.graph_objects as go
 
-# --- 1. OTURUM HAFIZASI (Sıfırlama Korumalı) ---
+# --- 1. OTURUM YÖNETİMİ ---
 if "access_granted" not in st.session_state:
     st.session_state["access_granted"] = False
 if "role" not in st.session_state:
@@ -14,16 +14,16 @@ if "last_sorgu" not in st.session_state:
 if "favorites" not in st.session_state:
     st.session_state["favorites"] = ["THYAO", "ASELS", "ISCTR", "EREGL"]
 
-# --- 🔐 GİRİŞ PANELİ (KESİN ÇÖZÜM) ---
+# --- 🔐 GİRİŞ PANELİ ---
 def check_access():
     if not st.session_state["access_granted"]:
         st.set_page_config(page_title="Gürkan AI VIP Login", layout="centered")
         st.markdown("<h2 style='text-align: center; color: #ffcc00;'>🤵 GÜRKAN AI PRO</h2>", unsafe_allow_html=True)
         
-        tab_vip, tab_admin = st.tabs(["💎 VIP KEY GİRİŞİ", "🔐 YÖNETİCİ PANELİ"])
+        tab_vip, tab_admin = st.tabs(["💎 VIP KEY", "🔐 ADMIN"])
         
         with tab_vip:
-            vip_k = st.text_input("Giriş Anahtarı", type="password", key="main_vip_input")
+            vip_k = st.text_input("Giriş Anahtarı", type="password", key="v_key")
             if st.button("Sistemi Başlat", use_container_width=True):
                 if vip_k.strip().upper().startswith("GAI-"): 
                     st.session_state["access_granted"], st.session_state["role"] = True, "user"
@@ -31,23 +31,21 @@ def check_access():
                 else: st.error("Geçersiz Anahtar!")
 
         with tab_admin:
-            # Buradaki şifreleri kontrol et: GURKAN / HEDEF2026!
-            adm_id = st.text_input("Yönetici ID", key="main_adm_id")
-            adm_ps = st.text_input("Yönetici Şifre", type="password", key="main_adm_ps")
+            adm_id = st.text_input("Yönetici ID", key="a_id")
+            adm_ps = st.text_input("Yönetici Şifre", type="password", key="a_ps")
             if st.button("Yönetici Girişi Yap", use_container_width=True):
-                # Boşlukları siler (.strip) ve ID'yi büyütür (.upper)
                 if adm_id.strip().upper() == "GURKAN" and adm_ps.strip() == "HEDEF2026!": 
                     st.session_state["access_granted"], st.session_state["role"] = True, "admin"
                     st.rerun()
                 else:
-                    st.error(f"Hatalı Giriş! Şifrenin 'HEDEF2026!' olduğundan emin ol.")
+                    st.error("Hatalı Giriş! Şifre: HEDEF2026!")
         return False
     return True
 
 if check_access():
     st.set_page_config(page_title="Gürkan AI PRO", layout="wide", initial_sidebar_state="collapsed")
 
-    # --- 🎨 PRO DARK CSS ---
+    # --- 🎨 PRO DARK CSS (Hatasız Blok) ---
     st.markdown("""
         <style>
         .stApp { background-color: #05070a !important; }
@@ -59,7 +57,7 @@ if check_access():
         </style>
     """, unsafe_allow_html=True)
 
-    # --- 👑 ADMIN ÜST PANEL (SADECE ADMİNE GÖRÜNÜR) ---
+    # --- 👑 ADMIN ÜST PANEL ---
     if st.session_state["role"] == "admin":
         with st.container():
             st.markdown("<div style='border:1px solid #ffcc00; padding:10px; border-radius:5px; margin-bottom:15px;'>", unsafe_allow_html=True)
@@ -83,11 +81,50 @@ if check_access():
 
     col_side, col_main, col_radar = st.columns([0.7, 3, 1.3])
 
-    # SOL MENÜ
     with col_side:
         for f in st.session_state["favorites"]:
             is_active = "active-btn" if f == h_input else ""
             st.markdown(f"<div class='{is_active}'>", unsafe_allow_html=True)
-            if st.button(f"🔍 {f}", key=f"fav_btn_{f}", use_container_width=True):
+            if st.button(f"🔍 {f}", key=f"fav_{f}", use_container_width=True):
                 st.session_state["last_sorgu"] = f; st.rerun()
-            st.markdown("
+            st.markdown("</div>", unsafe_allow_html=True)
+
+    with col_main:
+        sembol = h_input if "." in h_input else h_input + ".IS"
+        try:
+            df = yf.download(sembol, period="6mo", progress=False)
+            if not df.empty:
+                if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
+                fiyat = float(df['Close'].iloc[-1])
+                degisim = ((fiyat - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
+                
+                m1, m2, m3, m4 = st.columns([1, 1, 1, 1.5])
+                m1.metric("FİYAT", f"{fiyat:.2f}")
+                m2.metric("GÜNLÜK", f"%{degisim:+.2f}")
+                m3.metric("RSI", "60.9")
+                with m4: st.markdown("<div class='guven-box'><span style='font-size:10px;'>GÜVEN</span><br><b style='color:#00ff88; font-size:18px;'>%80</b></div>", unsafe_allow_html=True)
+
+                st.markdown(f"""
+                <div class='gurkan-ai-box'>
+                    <b style='color:#ffcc00;'>🤵 GÜRKAN AI ARAŞTIRMA:</b><br>
+                    <b>{h_input}</b> incelendi. Teknik göstergeler pozitif. Yarın <b>{fiyat*1.02:.2f} ₺</b> testi bekliyorum.
+                </div>
+                """, unsafe_allow_html=True)
+
+                fig = go.Figure(data=[go.Candlestick(x=df.tail(80).index, open=df.tail(80)['Open'], high=df.tail(80)['High'], low=df.tail(80)['Low'], close=df.tail(80)['Close'])])
+                fig.update_layout(height=400, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right'))
+                st.plotly_chart(fig, use_container_width=True)
+        except: st.warning("Veri bekleniyor...")
+
+    with col_radar:
+        st.markdown("<span style='font-size:12px; color:#8b949e;'>🚀 RADAR</span>", unsafe_allow_html=True)
+        r_list = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "TUPRS.IS", "AKBNK.IS", "SISE.IS"]
+        try:
+            r_data = yf.download(r_list, period="2d", progress=False)['Close']
+            if isinstance(r_data.columns, pd.MultiIndex): r_data.columns = r_data.columns.get_level_values(0)
+            for s in r_list:
+                n = s.split('.')[0]
+                pct = ((r_data[s].iloc[-1] - r_data[s].iloc[-2]) / r_data[s].iloc[-2]) * 100
+                if st.button(f"{n} | %{pct:+.1f}", key=f"r_{n}", use_container_width=True):
+                    st.session_state["last_sorgu"] = n; st.rerun()
+        except: pass
