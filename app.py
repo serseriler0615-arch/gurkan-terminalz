@@ -14,7 +14,7 @@ if "last_sorgu" not in st.session_state:
 if "favorites" not in st.session_state:
     st.session_state["favorites"] = ["THYAO", "ASELS", "ISCTR", "EREGL"]
 
-# --- 🔐 GİRİŞ PANELİ ---
+# --- 🔐 GİRİŞ PANELİ (FORM SİSTEMİ) ---
 def check_access():
     if not st.session_state["access_granted"]:
         st.set_page_config(page_title="Gürkan AI VIP Login", layout="centered")
@@ -23,29 +23,34 @@ def check_access():
         tab_vip, tab_admin = st.tabs(["💎 VIP KEY", "🔐 ADMIN"])
         
         with tab_vip:
-            vip_k = st.text_input("Giriş Anahtarı", type="password", key="v_key")
-            if st.button("Sistemi Başlat", use_container_width=True):
-                if vip_k.strip().upper().startswith("GAI-"): 
-                    st.session_state["access_granted"], st.session_state["role"] = True, "user"
-                    st.rerun()
-                else: st.error("Geçersiz Anahtar!")
+            with st.form("vip_form"):
+                vip_k = st.text_input("Giriş Anahtarı", type="password")
+                submit_vip = st.form_submit_button("Sistemi Başlat", use_container_width=True)
+                if submit_vip:
+                    if vip_k.strip().upper().startswith("GAI-"): 
+                        st.session_state["access_granted"], st.session_state["role"] = True, "user"
+                        st.rerun()
+                    else: st.error("Geçersiz Anahtar!")
 
         with tab_admin:
-            adm_id = st.text_input("Yönetici ID", key="a_id")
-            adm_ps = st.text_input("Yönetici Şifre", type="password", key="a_ps")
-            if st.button("Yönetici Girişi Yap", use_container_width=True):
-                if adm_id.strip().upper() == "GURKAN" and adm_ps.strip() == "HEDEF2026!": 
-                    st.session_state["access_granted"], st.session_state["role"] = True, "admin"
-                    st.rerun()
-                else:
-                    st.error("Hatalı Giriş! Şifre: HEDEF2026!")
+            with st.form("admin_form"):
+                adm_id = st.text_input("Yönetici ID")
+                adm_ps = st.text_input("Yönetici Şifre", type="password")
+                submit_adm = st.form_submit_button("Yönetici Girişi Yap", use_container_width=True)
+                if submit_adm:
+                    # Şifre ve ID kontrolü (Büyük/Küçük harf duyarsız ID)
+                    if adm_id.strip().upper() == "GURKAN" and adm_ps.strip() == "HEDEF2026!": 
+                        st.session_state["access_granted"], st.session_state["role"] = True, "admin"
+                        st.rerun()
+                    else:
+                        st.error("Giriş Başarısız! Lütfen ID ve Şifreyi kontrol edin.")
         return False
     return True
 
 if check_access():
     st.set_page_config(page_title="Gürkan AI PRO", layout="wide", initial_sidebar_state="collapsed")
 
-    # --- 🎨 PRO DARK CSS (Hatasız Blok) ---
+    # --- 🎨 PRO DARK CSS ---
     st.markdown("""
         <style>
         .stApp { background-color: #05070a !important; }
@@ -107,7 +112,7 @@ if check_access():
                 st.markdown(f"""
                 <div class='gurkan-ai-box'>
                     <b style='color:#ffcc00;'>🤵 GÜRKAN AI ARAŞTIRMA:</b><br>
-                    <b>{h_input}</b> incelendi. Teknik göstergeler pozitif. Yarın <b>{fiyat*1.02:.2f} ₺</b> testi bekliyorum.
+                    <b>{h_input}</b> incelendi. Yarın için beklenen fiyat seviyesi <b>{fiyat*1.02:.2f} ₺</b> civarıdır.
                 </div>
                 """, unsafe_allow_html=True)
 
