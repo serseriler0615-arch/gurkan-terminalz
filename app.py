@@ -4,7 +4,7 @@ import pandas as pd
 import time
 import plotly.graph_objects as go
 
-# --- 1. SİSTEM VE OTURUM ---
+# --- 1. SİSTEM AYARLARI ---
 if "access_granted" not in st.session_state:
     st.session_state["access_granted"] = False
 if "favorites" not in st.session_state:
@@ -16,32 +16,65 @@ def check_access():
     if not st.session_state["access_granted"]:
         st.set_page_config(page_title="Gürkan AI VIP", layout="centered")
         st.title("🤵 Gürkan AI VIP Terminal")
-        t1, t2 = st.tabs(["💎 VIP KEY", "🔐 ADMIN"])
-        with t1:
-            k = st.text_input("Anahtar")
-            if st.button("Sistemi Aç"):
-                if k.startswith("GAI-"): st.session_state["access_granted"], st.session_state["role"] = True, "user"; st.rerun()
-        with t2:
-            u, p = st.text_input("ID"), st.text_input("Şifre", type="password")
-            if st.button("Admin Giriş"):
-                if u.upper() == "GURKAN" and p == "HEDEF2024!": st.session_state["access_granted"], st.session_state["role"] = True, "admin"; st.rerun()
+        k = st.text_input("💎 VIP KEY GİRİNİZ", type="password")
+        if st.button("SİSTEMİ BAŞLAT"):
+            if k.startswith("GAI-"): st.session_state["access_granted"], st.session_state["role"] = True, "user"; st.rerun()
         return False
     return True
 
 if check_access():
     st.set_page_config(page_title="Gürkan AI VIP Pro", layout="wide", initial_sidebar_state="collapsed")
 
-    # --- VIP TASARIM ---
+    # --- 🎨 ULTRA DARK & NEON CSS ---
     st.markdown("""
         <style>
-        .stApp { background-color: #0d1117 !important; }
-        h1, h2, h3, p, span, label { color: #ffffff !important; font-family: 'Segoe UI', sans-serif; }
-        .asistan-box { background: #1c2128; border-left: 4px solid #00ff88; padding: 12px; border-radius: 8px; margin-bottom: 10px; font-size: 14px; }
-        .skor-box { font-size: 26px !important; color: #00ff88 !important; font-weight: 900 !important; text-align: center; border: 1px solid #333; border-radius: 10px; padding: 10px; background: #161b22; }
-        .radar-card-btn { width: 100%; text-align: left; background: #1c2128; border: 1px solid #30363d; border-radius: 8px; padding: 8px; margin-bottom: 5px; cursor: pointer; }
-        .radar-card-btn:hover { border-color: #00ff88; background: #161b22; }
-        .pct-up { color: #00ff88; float: right; font-weight: bold; }
-        .pct-down { color: #ff4b4b; float: right; font-weight: bold; }
+        /* Ana Arka Plan */
+        .stApp { background-color: #05070a !important; }
+        
+        /* Tüm Yazıları Beyaz Yap */
+        h1, h2, h3, p, span, label, div { color: #e0e0e0 !important; font-family: 'Inter', sans-serif !important; }
+        
+        /* Butonlardaki O Çirkin Beyazlığı Kaldır */
+        div.stButton > button {
+            background-color: rgba(0, 255, 136, 0.05) !important;
+            color: #00ff88 !important;
+            border: 1px solid #00ff88 !important;
+            border-radius: 5px !important;
+            width: 100% !important;
+            transition: all 0.3s ease !important;
+        }
+        div.stButton > button:hover {
+            background-color: #00ff88 !important;
+            color: #05070a !important;
+            box-shadow: 0 0 15px #00ff88 !important;
+        }
+
+        /* Gürkan AI Yorum Kutusu */
+        .asistan-box { 
+            background: #0d1117; 
+            border: 1px solid #30363d; 
+            border-left: 4px solid #00ff88; 
+            padding: 15px; 
+            border-radius: 10px; 
+            margin-bottom: 20px;
+        }
+
+        /* Skor Kutusu */
+        .skor-box { 
+            background: #0d1117; 
+            border: 2px solid #00ff88; 
+            border-radius: 15px; 
+            padding: 15px; 
+            text-align: center;
+            box-shadow: inset 0 0 10px rgba(0,255,136,0.1);
+        }
+
+        /* Input Alanlarını Karart */
+        .stTextInput > div > div > input {
+            background-color: #0d1117 !important;
+            color: white !important;
+            border: 1px solid #30363d !important;
+        }
         </style>
     """, unsafe_allow_html=True)
 
@@ -50,11 +83,13 @@ if check_access():
     # 1. SOL: FAVORİLER
     with col_fav:
         st.markdown("### ⭐ TAKİP")
-        y_fav = st.text_input("Ekle:", key="f_add_v76", label_visibility="collapsed", placeholder="Hisse...").upper().strip()
-        if st.button("➕", use_container_width=True) and y_fav:
+        y_fav = st.text_input("Ekle:", key="f_add_v77", label_visibility="collapsed", placeholder="Hisse...").upper().strip()
+        if st.button("➕") and y_fav:
             if y_fav not in st.session_state["favorites"]: st.session_state["favorites"].append(y_fav); st.rerun()
+        
+        st.markdown("---")
         for f in st.session_state["favorites"][-8:]:
-            if st.button(f"🔍 {f}", key=f"f_btn_{f}", use_container_width=True):
+            if st.button(f"🔍 {f}", key=f"f_btn_{f}"):
                 st.session_state["last_sorgu"] = f
                 st.rerun()
 
@@ -73,27 +108,31 @@ if check_access():
                 delta = df['Close'].diff(); gain = (delta.where(delta > 0, 0)).rolling(14).mean(); loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
                 rsi = 100 - (100 / (1 + (gain/loss))).iloc[-1]
                 
-                # SKOR VE ANALİZ NOTU
                 skor = 0
                 if fiyat > ma20: skor += 40
                 if 45 < rsi < 70: skor += 40
                 if degisim > 0: skor += 20
-                analiz_notu = f"{h_input} şu an teknik olarak %{int(skor)} güven veriyor. {'Trend güçlü, dirençler izlenmeli.' if skor > 60 else 'Hacim onayı ve destek takibi önemli.'}"
 
-                # ÜST PANEL: METRİKLER
+                # ÜST METRİKLER
                 m1, m2, m3 = st.columns([1, 1, 1])
-                m1.metric("FİYAT", f"{fiyat:.2f} TL", f"{degisim:.2f}%")
-                with m2: st.markdown(f"<div class='skor-box'><span style='font-size:10px; color:#8b949e;'>GÜVEN SKORU</span><br>%{int(skor)}</div>", unsafe_allow_html=True)
-                m3.metric("RSI (14G)", f"{rsi:.1f}")
+                m1.metric("SON FİYAT", f"{fiyat:.2f} TL", f"{degisim:.2f}%")
+                with m2: st.markdown(f"<div class='skor-box'><span style='font-size:11px; color:#8b949e;'>VIP GÜVEN SKORU</span><br><b style='font-size:28px; color:#00ff88;'>%{int(skor)}</b></div>", unsafe_allow_html=True)
+                m3.metric("RSI GÜCÜ", f"{rsi:.1f}")
 
-                # GÜRKAN AI YORUMU (ÇİZELGE ÜZERİNDE)
-                st.markdown(f"<div class='asistan-box'><b style='color:#00ff88;'>🤵 GÜRKAN AI YORUMU:</b><br>{analiz_notu}</div>", unsafe_allow_html=True)
+                # GÜRKAN AI YORUMU
+                st.markdown(f"""
+                <div class='asistan-box'>
+                    <b style='color:#00ff88; font-size:16px;'>🤵 GÜRKAN AI ANALİZ NOTU</b><br>
+                    {h_input} hissesi %{int(skor)} teknik güven puanıyla {'pozitif' if skor > 60 else 'temkinli'} bölgede. 
+                    RSI {int(rsi)} seviyesinde, {'alım iştahı artıyor.' if rsi > 50 else 'yatay seyir hakim.'}
+                </div>
+                """, unsafe_allow_html=True)
 
-                # ÇİZELGE
-                fig = go.Figure(data=[go.Scatter(x=df.tail(45).index, y=df.tail(45)['Close'], fill='tozeroy', line=dict(color='#00ff88', width=3), fillcolor='rgba(0,255,136,0.1)')])
-                fig.update_layout(height=280, margin=dict(l=0,r=0,t=10,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor='#222', side='right'))
+                # GRAFİK
+                fig = go.Figure(data=[go.Scatter(x=df.tail(50).index, y=df.tail(50)['Close'], fill='tozeroy', line=dict(color='#00ff88', width=2), fillcolor='rgba(0,255,136,0.05)')])
+                fig.update_layout(height=300, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor='#1c2128', side='right'))
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-        except: st.error("Bağlantı hatası, lütfen sembolü kontrol edin.")
+        except: st.error("Veri bağlantısı kurulamadı.")
 
     # 3. SAĞ: TIKLANABİLİR RADAR
     with col_radar:
@@ -109,15 +148,13 @@ if check_access():
                 try:
                     c, p = r_data[s].iloc[-1], r_data[s].iloc[-2]
                     pct = ((c - p) / p) * 100
-                    color_cls = "pct-up" if pct >= 0 else "pct-down"
-                    
-                    # Tıklanabilir Radar Butonu
-                    if st.button(f"{name} {'+' if pct>=0 else ''}{pct:.2f}%", key=f"rad_{name}", use_container_width=True):
+                    # Tıklanabilir Radar
+                    if st.button(f"{name} | %{pct:.2f}", key=f"rad_{name}"):
                         st.session_state["last_sorgu"] = name
                         st.rerun()
                 except: continue
-        except: st.warning("Radar yüklenemedi.")
+        except: st.warning("Radar Beklemede...")
 
         if st.session_state.get("role") == "admin":
-            st.markdown("<br>🔑 **KEY ÜRET**", unsafe_allow_html=True)
-            if st.button("LİSANS OLUŞTUR"): st.code(f"GAI-{int(time.time())}-30-VIP")
+            st.markdown("<br>🔐 **ADMIN**", unsafe_allow_html=True)
+            if st.button("LİSANS ÜRET"): st.code(f"GAI-{int(time.time())}-VIP")
