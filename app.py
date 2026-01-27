@@ -3,24 +3,34 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 
-# --- 1. FONKSİYONLAR (Hata Almamak İçin Üstte) ---
-
-@st.cache_data(ttl=300)
+# --- 1. RADAR MOTORU (Hızlandırılmış ve Stabil) ---
 def check_status(symbol):
     try:
+        # Daha hızlı sonuç için son 20 günlük veriyi çekiyoruz
         d = yf.download(symbol + ".IS", period="1mo", interval="1d", progress=False)
         if d.empty or len(d) < 14: return "🔍"
+        
+        # Sütun isimlerini garantiye alalım
+        if isinstance(d.columns, pd.MultiIndex): d.columns = d.columns.get_level_values(0)
+        
         delta = d['Close'].diff()
         gain = (delta.where(delta > 0, 0)).rolling(window=14).mean()
         loss = (-delta.where(delta < 0, 0)).rolling(window=14).mean()
-        rs = gain.iloc[-1] / loss.iloc[-1] if loss.iloc[-1] != 0 else 0
+        
+        # Sıfıra bölme hatasını engelle
+        avg_loss = loss.iloc[-1]
+        if avg_loss == 0: return "🟢" 
+        
+        rs = gain.iloc[-1] / avg_loss
         rsi = 100 - (100 / (1 + rs))
+        
         if rsi > 70: return "🔴"
         if rsi < 35: return "🟢"
         return "🟡"
-    except: return "⏳"
+    except: 
+        return "⚪" # Bağlantı anlık koparsa nötr dön
 
-# --- 2. OTURUM AYARLARI ---
+# --- 2. SİSTEM AYARLARI ---
 if "access_granted" not in st.session_state: st.session_state["access_granted"] = False
 if "last_sorgu" not in st.session_state: st.session_state["last_sorgu"] = "THYAO"
 if "favorites" not in st.session_state: st.session_state["favorites"] = ["THYAO", "ASELS", "ISCTR"]
@@ -44,21 +54,22 @@ if check_access():
     st.markdown("""
         <style>
         .stApp { background-color: #0b0d11 !important; }
-        .block-container { max-width: 1200px !important; padding-top: 0.5rem !important; }
+        .block-container { max-width: 1250px !important; padding-top: 0.5rem !important; }
         .gurkan-pro-box { 
             background: #161b22; border: 1px solid #30363d; padding: 12px; 
             border-radius: 10px; color: #ffffff; border-left: 5px solid #ffcc00;
         }
         .neon-green { color: #00ff88; text-shadow: 0 0 8px #00ff88; font-weight: bold; font-size: 18px !important; }
         .neon-red { color: #ff4b4b; text-shadow: 0 0 8px #ff4b4b; font-weight: bold; font-size: 18px !important; }
-        .strat-badge { padding: 3px 10px; border-radius: 5px; font-weight: bold; color: black; font-size: 11px; text-transform: uppercase; }
+        .strat-badge { padding: 4px 12px; border-radius: 6px; font-weight: bold; color: black; font-size: 12px; text-transform: uppercase; }
+        div.stButton > button { height: 32px !important; font-size: 11px !important; border-radius: 6px !important; }
+        [data-testid="stMetricValue"] { font-size: 18px !important; }
         p, span { font-size: 13px !important; }
-        div.stButton > button { height: 32px !important; font-size: 11px !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    # --- 🔍 ÜST PANEL ---
-    st.markdown("<h4 style='color:#ffcc00; text-align:center;'>★ GÜRKAN AI PRO</h4>", unsafe_allow_html=True)
+    st.markdown("<h4 style='color:#ffcc00; text-align:center; margin-bottom:15px;'>★ GÜRKAN AI PRO</h4>", unsafe_allow_html=True)
+    
     _, sc2, sc3, _ = st.columns([2.5, 2, 0.6, 2.5])
     with sc2: h_input = st.text_input("", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper().strip()
     with sc3: 
@@ -72,9 +83,11 @@ if check_access():
         for f in st.session_state["favorites"]:
             cf1, cf2 = st.columns([4, 1])
             with cf1:
-                if st.button(f"{f}", key=f"f_{f}", use_container_width=True): st.session_state["last_sorgu"] = f; st.rerun()
+                if st.button(f"{f}", key=f"f_{f}", use_container_width=True): 
+                    st.session_state["last_sorgu"] = f; st.rerun()
             with cf2:
-                if st.button("×", key=f"d_{f}"): st.session_state["favorites"].remove(f); st.rerun()
+                if st.button("×", key=f"d_{f}"): 
+                    st.session_state["favorites"].remove(f); st.rerun()
 
     with col_main:
         sembol = h_input if "." in h_input else h_input + ".IS"
@@ -91,10 +104,10 @@ if check_access():
                 volatility = (df['High'] - df['Low']).tail(10).mean() / last_p * 100
                 up_pot, down_risk = round(volatility * 1.6, 1), round(volatility * 1.3, 1)
 
-                if rsi > 70: strat, color, c_txt = "DİKKAT: DOYUM", "#ff4b4b", "RSI riskli bölgede, kar alımları gelebilir."
-                elif rsi < 35: strat, color, c_txt = "FIRSAT: ALIM", "#00ff88", "Aşırı satış bölgesinde, tepki beklenebilir."
-                elif last_p > ma20: strat, color, c_txt = "TREND POZİTİF", "#00ff88", f"Fiyat {ma20:.2f} ortalamasının üstünde."
-                else: strat, color, c_txt = "ZAYIF SEYİR", "#ffcc00", "Trend desteği kırılmış, dikkat!"
+                if rsi > 70: strat, color, c_txt = "DİKKAT: DOYUM", "#ff4b4b", "RSI aşırı alımda, teknik düzeltme beklenebilir."
+                elif rsi < 35: strat, color, c_txt = "FIRSAT: ALIM", "#00ff88", "Aşırı satış bölgesinde, tepki alımları yakın."
+                elif last_p > ma20: strat, color, c_txt = "TREND POZİTİF", "#00ff88", f"Fiyat {ma20:.2f} desteğinin üzerinde, görünüm güçlü."
+                else: strat, color, c_txt = "ZAYIF SEYİR", "#ffcc00", "Kısa vadeli trend zayıf, destek takibi şart."
 
                 m1, m2, m3, m4 = st.columns(4)
                 m1.metric("FİYAT", f"{last_p:.2f}")
@@ -105,29 +118,31 @@ if check_access():
                 st.markdown(f"""
                 <div class='gurkan-pro-box'>
                     <div style='display:flex; justify-content:space-between; align-items:center;'>
-                        <b style='color:#ffcc00;'>🤵 GÜRKAN PRO ANALİZ</b>
+                        <b style='color:#ffcc00; font-size:15px;'>🤵 GÜRKAN PRO ANALİZ</b>
                         <span class='strat-badge' style='background:{color};'>{strat}</span>
                     </div>
-                    <div style='display:flex; justify-content:space-around; margin-top:10px; background:rgba(255,255,255,0.03); padding:8px; border-radius:8px;'>
+                    <div style='display:flex; justify-content:space-around; margin-top:10px; background:rgba(255,255,255,0.03); padding:10px; border-radius:8px;'>
                         <div style='text-align:center;'>
                             <span style='color:#8b949e; font-size:10px;'>🚀 BEKLENTİ</span><br><span class='neon-green'>+ %{up_pot}</span>
                         </div>
-                        <div style='text-align:center; border-left: 1px solid #30363d; padding-left:15px;'>
+                        <div style='text-align:center; border-left: 1px solid #30363d; padding-left:20px;'>
                             <span style='color:#8b949e; font-size:10px;'>⚠️ RİSK</span><br><span class='neon-red'>- %{down_risk}</span>
                         </div>
                     </div>
-                    <p style='margin-top:10px;'><b>Yorum:</b> {c_txt}</p>
+                    <p style='margin-top:10px;'><b>Analiz:</b> {c_txt}</p>
                 </div>
                 """, unsafe_allow_html=True)
 
-                fig = go.Figure(data=[go.Candlestick(x=df.tail(60).index, open=df.tail(60)['Open'], high=df.tail(60)['High'], low=df.tail(60)['Low'], close=df.tail(60)['Close'])])
-                fig.update_layout(height=350, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#1c2128', tickfont=dict(size=9)))
+                fig = go.Figure(data=[go.Candlestick(x=df.tail(65).index, open=df.tail(65)['Open'], high=df.tail(65)['High'], low=df.tail(65)['Low'], close=df.tail(65)['Close'])])
+                fig.update_layout(height=380, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#1c2128', tickfont=dict(size=9)))
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-        except: st.empty()
+        except: st.info("Hisse verisi çekilemedi.")
 
     with col_radar:
-        st.markdown("<p style='color:#8b949e; font-weight:bold;'>RADAR (CANLI)</p>", unsafe_allow_html=True)
-        for r in ["THYAO", "ASELS", "EREGL", "TUPRS", "AKBNK", "SISE", "BIMAS"]:
+        st.markdown("<p style='color:#8b949e; font-weight:bold;'>RADAR (ANLIK)</p>", unsafe_allow_html=True)
+        radar_list = ["THYAO", "ASELS", "EREGL", "TUPRS", "AKBNK", "SISE", "BIMAS"]
+        for r in radar_list:
+            # Anlık kontrol, cache'siz daha güvenli
             icon = check_status(r)
             if st.button(f"{icon} {r}", key=f"rad_{r}", use_container_width=True):
                 st.session_state["last_sorgu"] = r; st.rerun()
