@@ -5,7 +5,7 @@ import time
 import plotly.graph_objects as go
 from datetime import datetime, timedelta
 
-# --- 1. OTURUM SİSTEMİ ---
+# --- 1. SİSTEM VE GİRİŞ ---
 if "access_granted" not in st.session_state:
     st.session_state["access_granted"] = False
 if "favorites" not in st.session_state:
@@ -13,8 +13,7 @@ if "favorites" not in st.session_state:
 
 def check_access():
     if not st.session_state["access_granted"]:
-        st.set_page_config(page_title="Gürkan AI Giriş", layout="centered")
-        st.markdown("<style>.stApp{background-color:#0d1117;} h1,p,label{color:white !important;}</style>", unsafe_allow_html=True)
+        st.set_page_config(page_title="Gürkan AI VIP", layout="centered")
         st.title("🤵 Gürkan AI VIP")
         t1, t2 = st.tabs(["💎 VIP KEY", "🔐 ADMIN"])
         with t1:
@@ -31,30 +30,18 @@ def check_access():
 if check_access():
     st.set_page_config(page_title="Gürkan AI VIP Pro", layout="wide", initial_sidebar_state="collapsed")
 
-    # --- VIP GÖRSEL TASARIM ---
+    # --- VIP TASARIM ---
     st.markdown("""
         <style>
         .stApp { background-color: #0d1117 !important; }
         h1, h2, h3, p, span, label { color: #ffffff !important; font-size: 13px !important; font-weight: bold !important; }
-        
-        /* METRİK VE TRENDY */
-        div[data-testid="stMetricValue"] { font-size: 22px !important; }
-        .stMetric { background: #161b22; border: 1px solid #30363d; border-radius: 8px; padding: 10px !important; }
-        
-        /* RADAR KARTLARI */
-        .radar-card { 
-            background: #1c2128; border: 1px solid #30363d; border-radius: 8px; 
-            padding: 10px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center;
-        }
-        .pct-up { color: #00ff88 !important; background: rgba(0, 255, 136, 0.1); padding: 4px 8px; border-radius: 5px; border: 1px solid #00ff88; }
-        .pct-down { color: #ff4b4b !important; background: rgba(255, 75, 75, 0.1); padding: 4px 8px; border-radius: 5px; border: 1px solid #ff4b4b; }
-        
-        .asistan-box { background: #1c2128; border: 2px solid #00ff88; padding: 12px; border-radius: 12px; margin-top: 5px; }
-        .admin-box { background: #161b22; border: 1px dashed #00ff88; padding: 10px; border-radius: 10px; margin-top: 15px; }
+        .asistan-box { background: #1c2128; border: 2px solid #00ff88; padding: 15px; border-radius: 12px; margin-top: 5px; }
+        .skor-box { font-size: 24px !important; color: #00ff88 !important; font-weight: 900 !important; text-align: center; border: 1px solid #333; border-radius: 10px; padding: 10px; background: #161b22; }
+        .radar-card { background: #1c2128; border: 1px solid #30363d; border-radius: 8px; padding: 10px; margin-bottom: 6px; display: flex; justify-content: space-between; align-items: center; }
+        .haber-card { background: #161b22; border-left: 3px solid #0088ff; padding: 8px; margin-bottom: 5px; border-radius: 4px; font-size: 11px !important; }
         </style>
     """, unsafe_allow_html=True)
 
-    # --- ANA PANEL ---
     col_fav, col_main, col_radar = st.columns([0.7, 3, 1.3])
 
     # 1. SOL: FAVORİLER
@@ -63,79 +50,81 @@ if check_access():
         y_fav = st.text_input("Ekle:", key="f_add", label_visibility="collapsed").upper()
         if st.button("➕") and y_fav:
             if y_fav not in st.session_state["favorites"]: st.session_state["favorites"].append(y_fav); st.rerun()
-        for f in st.session_state["favorites"][-6:]:
-            st.markdown(f"<div style='color:#00ff88; padding:5px; border-bottom:1px solid #222;'>🔍 {f}</div>", unsafe_allow_html=True)
+        for f in st.session_state["favorites"][-5:]:
+            st.markdown(f"<div style='color:#00ff88; border-bottom:1px solid #222; padding:3px;'>🔍 {f}</div>", unsafe_allow_html=True)
 
-    # 2. ORTA: ANALİZ, TRENDY VE ÇİZELGE
+    # 2. ORTA: ANALİZ, ÇOKLU İNDİKATÖR & HABER
     with col_main:
-        h_input = st.text_input("Hisse:", value="ISCTR", label_visibility="collapsed").upper()
+        h_input = st.text_input("Hisse Sorgu:", value="THYAO", label_visibility="collapsed").upper()
         sembol = h_input if "." in h_input else h_input + ".IS"
+        
         try:
-            df = yf.download(sembol, period="1mo", interval="1d", progress=False)
+            ticker = yf.Ticker(sembol)
+            df = ticker.history(period="6mo")
+            
             if not df.empty:
-                if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-                df_20 = df.tail(20)
-                fiyat = float(df['Close'].iloc[-1])
-                onceki = float(df['Close'].iloc[-2])
-                degisim = ((fiyat - onceki) / onceki) * 100
-                ma20 = df['Close'].rolling(20).mean().iloc[-1]
+                # --- ÇOKLU İNDİKATÖR HESAPLAMA ---
+                # 1. RSI
+                delta = df['Close'].diff()
+                gain = (delta.where(delta > 0, 0)).rolling(14).mean()
+                loss = (-delta.where(delta < 0, 0)).rolling(14).mean()
+                rsi = 100 - (100 / (1 + (gain/loss))).iloc[-1]
                 
-                h1, h2, stop = fiyat*1.05, fiyat*1.12, fiyat*0.96
-                trendy_durum = "YUKARI" if fiyat > ma20 else "AŞAĞI"
-                trendy_renk = "#00ff88" if trendy_durum == "YUKARI" else "#ff4b4b"
+                # 2. Hareketli Ortalamalar
+                ma20 = df['Close'].rolling(20).mean().iloc[-1]
+                ma50 = df['Close'].rolling(50).mean().iloc[-1]
+                
+                # 3. Güven Skoru Algoritması
+                skor = 0
+                if df['Close'].iloc[-1] > ma20: skor += 30
+                if df['Close'].iloc[-1] > ma50: skor += 20
+                if 40 < rsi < 70: skor += 30
+                if rsi < 40: skor += 20 # Aşırı satım fırsatı
+                
+                fiyat = df['Close'].iloc[-1]
+                degisim = ((fiyat - df['Close'].iloc[-2]) / df['Close'].iloc[-2]) * 100
+                
+                # Üst Panel: Skor ve Fiyat
+                m1, m2, m3 = st.columns([1, 1, 1])
+                m1.metric("FİYAT", f"{fiyat:.2f}", f"{degisim:.2f}%")
+                with m2: 
+                    st.markdown(f"<div class='skor-box'><span style='font-size:10px; color:#8b949e;'>GÜVEN SKORU</span><br>%{skor}</div>", unsafe_allow_html=True)
+                m3.metric("RSI (14)", f"{rsi:.1f}")
 
-                # Metrikler (TRENDY GERİ GELDİ)
-                m1, m2, m3 = st.columns(3)
-                m1.metric("FİYAT", f"{fiyat:.2f} TL", f"{degisim:.2f}%")
-                m2.metric("TRENDY", trendy_durum, delta_color="normal")
-                m3.metric("STOP", f"{stop:.2f}")
-
-                # TÜRKÇE VE RENKLİ ÇİZELGE
-                fig = go.Figure(data=[go.Scatter(x=df_20.index, y=df_20['Close'], fill='tozeroy', 
-                                line=dict(color=trendy_renk, width=3), fillcolor=f'rgba({0 if trendy_durum=="YUKARI" else 255}, {255 if trendy_durum=="YUKARI" else 0}, 136, 0.1)')])
+                # Çizelge
+                fig = go.Figure(data=[go.Scatter(x=df.tail(20).index, y=df.tail(20)['Close'], fill='tozeroy', line=dict(color='#00ff88'), fillcolor='rgba(0,255,136,0.1)')])
                 fig.update_layout(height=180, margin=dict(l=0,r=0,t=10,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis=dict(showgrid=False), yaxis=dict(showgrid=True, gridcolor='#222', side='right'))
                 st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-                # VIP YORUM
-                st.markdown(f"""<div class='asistan-box'><b style='color:#00ff88;'>🤵 VIP ANALİZ: {h_input}</b><br>
-                🎯 Hedefler: <span style='color:#00ff88;'>{h1:.2f} / {h2:.2f}</span> | 🛡️ Stop: <span style='color:#ff4b4b;'>{stop:.2f}</span><br>
-                <b>Sinyal:</b> {h_input} şu an <span style='color:{trendy_renk};'>{trendy_durum}</span> trendinde. { 'Güçlü alıcılar devrede.' if trendy_durum == 'YUKARI' else 'Satış baskısı devam ediyor.' }</div>""", unsafe_allow_html=True)
-        except: st.info("Veri bekleniyor...")
+                # --- HABERLER & KAP SİNYALİ ---
+                st.markdown("### 📢 SON GELİŞMELER")
+                news = ticker.news[:3] # Son 3 haber
+                if news:
+                    for n in news:
+                        dt = datetime.fromtimestamp(n['providerPublishTime']).strftime('%H:%M')
+                        st.markdown(f"<div class='haber-card'><b>[{dt}]</b> {n['title'][:80]}...</div>", unsafe_allow_html=True)
+                else:
+                    st.markdown("<div class='haber-card'>Hisseye dair güncel akış bulunamadı.</div>", unsafe_allow_html=True)
 
-    # 3. SAĞ: RADAR (% DÜŞÜŞ/YÜKSELİŞ + VOL)
+                # VIP Yorum
+                st.markdown(f"""<div class='asistan-box'><b style='color:#00ff88;'>🤵 VIP ANALİZ: {h_input}</b><br>
+                Çoklu indikatör taramasına göre güven skoru <b>%{skor}</b>. {'Alım iştahı yüksek.' if skor > 60 else 'Yatay/Bekle gör bölgesinde.'}</div>""", unsafe_allow_html=True)
+        except: st.error("Veri bağlantısı kesildi.")
+
+    # 3. SAĞ: CANLI RADAR & ADMIN
     with col_radar:
         st.markdown("### 🚀 CANLI RADAR")
         r_list = ["THYAO.IS", "ASELS.IS", "EREGL.IS", "TUPRS.IS", "SASA.IS"]
-        r_data = yf.download(r_list, period="2d", interval="1d", progress=False)['Close']
-        if isinstance(r_data.columns, pd.MultiIndex): r_data.columns = r_data.columns.get_level_values(1)
-
-        for s in r_list:
-            try:
-                c = r_data[s].iloc[-1]
-                p = r_data[s].iloc[-2]
+        try:
+            r_data = yf.download(r_list, period="2d", interval="1d", progress=False)['Close']
+            if isinstance(r_data.columns, pd.MultiIndex): r_data.columns = r_data.columns.get_level_values(1)
+            for s in r_list:
+                c, p = r_data[s].iloc[-1], r_data[s].iloc[-2]
                 pct = ((c - p) / p) * 100
-                name = s.split(".")[0]
-                cls = "pct-up" if pct >= 0 else "pct-down"
-                
-                st.markdown(f"""
-                    <div class='radar-card'>
-                        <div>
-                            <span style='color:#00ff88;'>{name}</span><br>
-                            <span style='font-size:10px; color:#8b949e;'>Vol: {int(c*1.5)}M TL</span>
-                        </div>
-                        <div class='{cls}'>{"+" if pct>=0 else ""}{pct:.2f}%</div>
-                    </div>
-                """, unsafe_allow_html=True)
-            except: continue
-        
-        # ADMIN PANEL (SAĞ ALT)
+                st.markdown(f"<div class='radar-card'><div>{s.split('.')[0]}<br><span style='font-size:10px; color:#8b949e;'>Vol: {int(c*1.2)}M</span></div><div class='{'pct-up' if pct>=0 else 'pct-down'}'>{pct:.2f}%</div></div>", unsafe_allow_html=True)
+        except: pass
+
         if st.session_state.get("role") == "admin":
-            st.markdown("<div class='admin-box'>🔑 <b>ADMIN</b>", unsafe_allow_html=True)
-            if st.button("KEY ÜRET"): st.code(f"GAI-{int(time.time())}-30-VIP")
+            st.markdown("<div style='background:#161b22; border:1px dashed #00ff88; padding:10px; border-radius:10px; margin-top:30px;'>🔑 **KEY ÜRET**", unsafe_allow_html=True)
+            if st.button("OLUŞTUR"): st.code(f"GAI-{int(time.time())}-30-VIP")
             st.markdown("</div>", unsafe_allow_html=True)
-            # Radarı her 5 dakikada bir güncelleyen fonksiyon (Kodun içine entegre)
-@st.cache_data(ttl=300) # 300 saniye (5 dakika) boyunca veriyi tutar, sonra tazeleyerek canlı tutar
-def canlı_radar_verisi(hisseler):
-    # Veriyi yfinance'den anlık çeker
-    data = yf.download(hisseler, period="2d", interval="1m", progress=False) 
-    # ... (Geri kalan hesaplama işlemleri)
