@@ -6,131 +6,127 @@ import plotly.graph_objects as go
 # --- 1. SİSTEM AYARLARI ---
 st.set_page_config(page_title="Gürkan AI : Admin", layout="wide", initial_sidebar_state="collapsed")
 
-# --- 2. ADMIN GİRİŞ KONTROLÜ ---
-if "authenticated" not in st.session_state: st.session_state["authenticated"] = False
+# --- 2. GÜVENLİK VE HAFIZA ---
+if "auth" not in st.session_state: st.session_state["auth"] = False
 if "favorites" not in st.session_state: st.session_state["favorites"] = ["THYAO", "AKBNK", "ISCTR"]
 if "last_sorgu" not in st.session_state: st.session_state["last_sorgu"] = "THYAO"
 
-# --- 3. CSS (TELEFON UYUMLU & ADMIN TEMASI) ---
+# --- 3. CSS (SİYAH ADMIN & MOBİL KOKPİT) ---
 st.markdown("""
 <style>
-    /* Global Reset */
     .stApp { background-color: #05070a !important; color: #e1e1e1 !important; }
     header { visibility: hidden; }
     
-    /* Mobil İçin Esnek Yapı */
-    @media (max-width: 600px) {
-        .main-container { padding: 10px !important; }
-        .price-main { font-size: 24px !important; }
-        .stPlotlyChart { height: 300px !important; }
+    /* Login Paneli */
+    .login-card { 
+        background: #0d1117; border: 2px solid #ffcc00; border-radius: 12px; 
+        padding: 30px; max-width: 350px; margin: 80px auto; text-align: center;
+        box-shadow: 0 0 20px rgba(255, 204, 0, 0.2);
     }
-
-    /* Admin Giriş Paneli */
-    .admin-box { background: #0d1117; border: 1px solid #ffcc00; border-radius: 8px; padding: 20px; text-align: center; max-width: 400px; margin: 100px auto; }
     
-    /* Arama Motoru Küçültme */
+    /* Mobil Input ve Kartlar */
     .stTextInput>div>div>input { 
-        background: #0d1117 !important; color: #ffcc00 !important; 
-        border: 1px solid #30363d !important; font-size: 14px !important; 
-        height: 35px !important; border-radius: 4px !important;
+        background: #111418 !important; color: #ffcc00 !important; 
+        border: 1px solid #30363d !important; text-align: center; font-size: 16px; 
     }
-
-    /* Şık Kartlar */
-    .admin-card {
-        background: #0d1117; border: 1px solid #1c2128; border-radius: 4px;
-        padding: 12px; border-left: 3px solid #ffcc00; margin-bottom: 8px;
+    .metric-card {
+        background: #0d1117; border: 1px solid #1c2128; border-radius: 8px;
+        padding: 12px; margin-bottom: 8px; border-left: 4px solid #ffcc00;
     }
-    
-    .label-mini { color: #8b949e; font-size: 10px; text-transform: uppercase; font-weight: bold; }
+    .price-val { font-size: 32px; font-weight: bold; font-family: monospace; }
     
     /* Butonlar */
     div.stButton > button {
-        background: #111418 !important; color: #8b949e !important;
-        border: 1px solid #1c2128 !important; border-radius: 4px !important;
-        font-size: 10px !important; height: 28px !important; width: 100% !important;
+        background: #111418 !important; color: #ffcc00 !important;
+        border: 1px solid #30363d !important; width: 100% !important; border-radius: 6px;
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 4. ADMIN LOGIN ---
-if not st.session_state["authenticated"]:
-    with st.container():
-        st.markdown("<div class='admin-box'>", unsafe_allow_html=True)
-        st.markdown("<h3 style='color:#ffcc00;'>🤵 ADMIN GİRİŞİ</h3>", unsafe_allow_html=True)
-        pw = st.text_input("Sistem Şifresi", type="password")
-        if st.button("SİSTEMİ AÇ"):
-            if pw == "gurkan123": # Buradan şifreni değiştirebilirsin
-                st.session_state["authenticated"] = True
-                st.rerun()
-            else:
-                st.error("Hatalı Kod.")
-        st.markdown("</div>", unsafe_allow_html=True)
-    st.stop()
+# --- 4. ADMIN GİRİŞİ (HEDEF2024!) ---
+if not st.session_state["auth"]:
+    st.markdown("<div class='login-card'>", unsafe_allow_html=True)
+    st.markdown("<h2 style='color:#ffcc00; letter-spacing:3px;'>🤵 ADMIN LOGIN</h2>", unsafe_allow_html=True)
+    st.markdown("<p style='font-size:10px; color:#4b525d;'>GÜRKAN AI TERMINAL v193</p>", unsafe_allow_html=True)
+    
+    pw_input = st.text_input("SİSTEM ŞİFRESİ", type="password")
+    if st.button("SİSTEME GİRİŞ YAP"):
+        if pw_input == "HEDEF2024!":
+            st.session_state["auth"] = True
+            st.rerun()
+        else:
+            st.error("ŞİFRE HATALI!")
+    st.markdown("</div>", unsafe_allow_html=True)
+    st.stop() # Şifre doğru değilse geri kalan kodu çalıştırma
 
 # --- 5. ANALİZ MOTORU ---
-def get_admin_data(symbol):
+def get_pro_analysis(symbol):
     try:
-        df = yf.download(symbol + ".IS", period="3mo", interval="1d", progress=False)
+        df = yf.download(symbol + ".IS", period="6mo", interval="1d", progress=False)
         if df.empty: return None
         if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
         
         lp = float(df['Close'].iloc[-1]); pc = float(df['Close'].iloc[-2]); ch = ((lp-pc)/pc)*100
         atr = (df['High']-df['Low']).rolling(14).mean().iloc[-1]
+        vol_r = df['Volume'].iloc[-1] / df['Volume'].rolling(10).mean().iloc[-1]
         
-        return {"p": lp, "ch": ch, "df": df, "target": lp+(atr*2), "stop": lp-(atr*1.2)}
+        # Akıllı Sinyal
+        signal = "AL" if ch > 0 and vol_r > 1.1 else "SAT" if ch < -1 else "BEKLE"
+        
+        return {"p": lp, "ch": ch, "df": df, "target": lp+(atr*2.2), "stop": lp-(atr*1.2), "sig": signal, "vr": vol_r}
     except: return None
 
-# --- 6. ANA DASHBOARD (TELEFON & WEB) ---
-st.markdown("<p style='text-align:center; color:#ffcc00; font-size:12px; letter-spacing:3px;'>GÜRKAN AI : ENCRYPTED TERMINAL</p>", unsafe_allow_html=True)
+# --- 6. TERMİNAL EKRANI (ŞİFRE SONRASI) ---
+st.markdown("<p style='text-align:center; color:#ffcc00; letter-spacing:5px; font-size:12px;'>🤵 GÜRKAN AI SECURE TERMINAL</p>", unsafe_allow_html=True)
 
-# Kontroller
-c_search, c_actions = st.columns([3, 1])
+# Arama ve Favori Ekleme (Telefonda yan yana durur)
+c_search, c_fav = st.columns([3, 1])
 with c_search:
     s_inp = st.text_input("", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper().strip()
-with c_actions:
-    if st.button("SORGULA"): st.session_state["last_sorgu"] = s_inp; st.rerun()
+with c_fav:
+    if st.button("🔍 SORGULA"): st.session_state["last_sorgu"] = s_inp; st.rerun()
 
-# Favoriler (Mobil Uyumlu Scroll)
-fav_list = st.columns(len(st.session_state["favorites"]) + 1)
+# Hızlı Favori Butonları
+fav_cols = st.columns(len(st.session_state["favorites"]) + 1)
 for i, f in enumerate(st.session_state["favorites"]):
-    if fav_list[i].button(f"{f}"): st.session_state["last_sorgu"] = f; st.rerun()
+    if fav_cols[i].button(f): st.session_state["last_sorgu"] = f; st.rerun()
 
 # Ana İçerik
-res = get_admin_data(st.session_state["last_sorgu"])
+res = get_pro_analysis(st.session_state["last_sorgu"])
 if res:
-    # Mobilde alt alta, Webde yan yana
-    col1, col2 = st.columns([1, 2.5])
+    m_col, g_col = st.columns([1, 2.5])
     
-    with col1:
+    with m_col:
         st.markdown(f"""
-        <div class='admin-card'>
-            <span class='label-mini'>{st.session_state["last_sorgu"]} VERİSİ</span><br>
-            <span style='font-size:28px; font-weight:bold;'>{res['p']:.2f}</span>
-            <span style='color:{"#00ff88" if res['ch']>0 else "#ff4b4b"}; font-size:14px;'> {res['ch']:+.2f}%</span>
+        <div class='metric-card'>
+            <p class='label-mini'>{st.session_state["last_sorgu"]} FİYAT</p>
+            <p class='price-val'>{res['p']:.2f} <span style='font-size:14px; color:{"#00ff88" if res['ch']>0 else "#ff4b4b"}'>{res['ch']:+.2f}%</span></p>
         </div>
-        <div class='admin-card' style='border-left-color:#00ff88'>
-            <span class='label-mini'>TEKNİK HEDEF</span><br>
-            <span style='font-size:18px; font-weight:bold; color:#00ff88;'>{res['target']:.2f}</span>
+        <div class='metric-card' style='border-left-color:#00ff88'>
+            <p class='label-mini'>HEDEF</p><p style='font-size:20px; font-weight:bold; color:#00ff88;'>{res['target']:.2f}</p>
         </div>
-        <div class='admin-card' style='border-left-color:#ff4b4b'>
-            <span class='label-mini'>STOP LOSS</span><br>
-            <span style='font-size:18px; font-weight:bold; color:#ff4b4b;'>{res['stop']:.2f}</span>
+        <div class='metric-card' style='border-left-color:#ff4b4b'>
+            <p class='label-mini'>STOP</p><p style='font-size:20px; font-weight:bold; color:#ff4b4b;'>{res['stop']:.2f}</p>
+        </div>
+        <div class='metric-card' style='border-left-color:#00d4ff'>
+            <p class='label-mini'>SİNYAL / HACİM</p><p style='font-size:18px; font-weight:bold;'>{res['sig']} / {res['vr']:.1f}x</p>
         </div>
         """, unsafe_allow_html=True)
-        if st.button("⭐ FAVORİ EKLE/SİL"):
+        
+        if st.button("⭐ LİSTEYE EKLE / SİL"):
             if st.session_state["last_sorgu"] in st.session_state["favorites"]:
                 st.session_state["favorites"].remove(st.session_state["last_sorgu"])
             else:
                 st.session_state["favorites"].append(st.session_state["last_sorgu"])
             st.rerun()
 
-    with col2:
+    with g_col:
         fig = go.Figure(data=[go.Candlestick(x=res['df'].index, open=res['df']['Open'], high=res['df']['High'], low=res['df']['Low'], close=res['df']['Close'])])
-        fig.update_layout(height=350, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+        fig.update_layout(height=400, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
                           xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#161b22', tickfont=dict(color='#4b525d', size=10)))
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-# Çıkış
-if st.sidebar.button("OTURUMU KAPAT"):
-    st.session_state["authenticated"] = False
+# Çıkış Butonu
+if st.sidebar.button("ADMIN ÇIKIŞI"):
+    st.session_state["auth"] = False
     st.rerun()
