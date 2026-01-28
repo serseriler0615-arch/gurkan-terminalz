@@ -4,134 +4,134 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # --- 1. SİSTEM AYARLARI ---
-if "access_granted" not in st.session_state: st.session_state["access_granted"] = False
+st.set_page_config(page_title="Gürkan AI v170", layout="wide", initial_sidebar_state="collapsed")
+
 if "last_sorgu" not in st.session_state: st.session_state["last_sorgu"] = "THYAO"
-if "favorites" not in st.session_state: st.session_state["favorites"] = ["THYAO", "ASELS", "AKBNK"]
+if "favorites" not in st.session_state: st.session_state["favorites"] = ["THYAO", "ASELS", "ISCTR"]
 
-if not st.session_state["access_granted"]:
-    st.set_page_config(page_title="Gürkan AI VIP", layout="centered")
-    st.markdown("<style>.stApp {background:#05070a;}</style>", unsafe_allow_html=True)
-    vk = st.text_input("Giriş Anahtarı", type="password")
-    if st.button("TERMİNALİ AKTİF ET"):
-        if vk.strip().upper() == "HEDEF2026": st.session_state["access_granted"] = True; st.rerun()
-    st.stop()
-
-# --- 2. MICRO-UI CSS (Sıfır Beyazlık & Mini Butonlar) ---
-st.set_page_config(page_title="Gürkan AI v169", layout="wide")
+# --- 2. KUSURSUZ OBSIDIAN CSS (Sıfır Beyazlık, Keskin Hatlar) ---
 st.markdown("""
 <style>
-    .stApp { background: #05070a !important; color: #a1a1a1 !important; }
-    header, .stActionButton { visibility: hidden !important; }
+    /* Saf Karanlık Arkaplan */
+    .stApp { background-color: #05070a !important; color: #e1e1e1 !important; }
+    header { visibility: hidden; }
     
-    /* Girdi Kutusu */
+    /* Input Alanı */
     .stTextInput>div>div>input {
         background: #0d1117 !important; color: #ffcc00 !important;
         border: 1px solid #1c2128 !important; border-radius: 4px !important;
+        text-align: center; font-family: monospace;
     }
-    
-    /* Executive Kart */
-    .hunter-card {
-        background: #0d1117; border: 1px solid #1c2128; border-radius: 6px;
-        padding: 12px; margin-bottom: 10px; border-left: 3px solid #ffcc00;
+
+    /* Ana Kart Tasarımı */
+    .status-card {
+        background: #0d1117; border: 1px solid #1c2128; border-radius: 8px;
+        padding: 15px; margin-bottom: 15px; border-top: 3px solid #ffcc00;
     }
-    
-    /* MİKRO BUTON TASARIMI */
+
+    /* MİKRO BUTONLAR (Senin İstediğin Küçüklükte) */
     div.stButton > button {
-        background: #111418 !important; color: #ffcc00 !important;
+        background: #111418 !important; color: #8b949e !important;
         border: 1px solid #1c2128 !important; border-radius: 3px !important;
-        font-size: 9px !important; /* Yazı boyutu makul */
-        padding: 0px 5px !important; /* İç boşlukları öldürdük */
-        min-height: 20px !important; /* Butonu incelttik */
-        line-height: 20px !important;
-        width: auto !important;
-        transition: 0.2s;
-        margin: 0 auto !important;
-        display: block;
+        font-size: 10px !important; padding: 2px 8px !important;
+        min-height: 22px !important; height: 22px !important; width: auto !important;
+        transition: 0.2s; display: block; margin: 0 auto;
     }
-    div.stButton > button:hover { border-color: #ffcc00 !important; background: #1c2128 !important; }
-    
-    .radar-box {
-        background: #080a0d; border: 1px solid #161b22;
-        padding: 6px; border-radius: 4px; margin-bottom: 4px;
-        text-align: center;
-    }
-    
-    .label-mini { color: #4b525d; font-size: 9px; text-transform: uppercase; letter-spacing: 1px; }
+    div.stButton > button:hover { border-color: #ffcc00 !important; color: #ffcc00 !important; }
+
+    /* Radar ve Liste Yazıları */
+    .label-mini { color: #4b525d; font-size: 10px; text-transform: uppercase; letter-spacing: 1.5px; margin-bottom: 5px; }
+    .radar-box { background: #080a0d; border-bottom: 1px solid #161b22; padding: 6px 0; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. VERİ MOTORU ---
-def get_radar_data():
-    stocks = ["THYAO", "ASELS", "AKBNK", "ISCTR", "EREGL", "TUPRS", "PGSUS", "KCHOL"]
+# --- 3. ANALİZ FONKSİYONU ---
+def get_clean_data(symbol):
+    try:
+        df = yf.download(symbol + ".IS", period="3mo", interval="1d", progress=False)
+        if df.empty: return None
+        if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
+        lp = df['Close'].iloc[-1]
+        pc = df['Close'].iloc[-2]
+        ch = ((lp - pc) / pc) * 100
+        return {"p": lp, "ch": ch, "df": df}
+    except: return None
+
+# --- 4. RADAR VERİSİ ---
+def get_radar_list():
+    stocks = ["THYAO", "ASELS", "AKBNK", "ISCTR", "EREGL", "TUPRS", "KCHOL"]
     res = []
     for s in stocks:
         try:
-            df = yf.download(s + ".IS", period="5d", interval="1d", progress=False)
-            if df.empty: continue
-            if isinstance(df.columns, pd.MultiIndex): df.columns = df.columns.get_level_values(0)
-            lp = df['Close'].iloc[-1]; ch = ((lp - df['Close'].iloc[-2])/df['Close'].iloc[-2])*100
-            res.append({"s": s, "p": lp, "ch": ch})
+            d = yf.download(s + ".IS", period="2d", progress=False)
+            if isinstance(d.columns, pd.MultiIndex): d.columns = d.columns.get_level_values(0)
+            c = ((d['Close'].iloc[-1] - d['Close'].iloc[-2]) / d['Close'].iloc[-2]) * 100
+            res.append({"s": s, "ch": c})
         except: continue
     return res
 
-# --- 4. ARAYÜZ ---
-st.markdown("<h4 style='text-align:center; color:#ffcc00; margin-bottom:15px; font-weight:lighter; letter-spacing:5px;'>GÜRKAN AI</h4>", unsafe_allow_html=True)
+# --- 5. ARAYÜZ YERLEŞİMİ ---
+st.markdown("<h3 style='text-align:center; color:#ffcc00; letter-spacing:4px; font-weight:lighter;'>GÜRKAN AI</h3>", unsafe_allow_html=True)
 
-# Üst Arama
-_, mid, _ = st.columns([1.5, 1, 1.5])
-with mid:
-    c1, c2 = st.columns([3, 1])
-    with c1: s_inp = st.text_input("", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper().strip()
-    with c2: 
-        if st.button("OK", use_container_width=True): st.session_state["last_sorgu"] = s_inp; st.rerun()
+# ARAMA BARI (Orta Üst)
+_, mid_search, _ = st.columns([1.5, 1, 1.5])
+with mid_search:
+    c_in, c_ok = st.columns([3, 1])
+    with c_in: s_inp = st.text_input("", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper().strip()
+    with c_ok: 
+        if st.button("OK", use_container_width=True): 
+            st.session_state["last_sorgu"] = s_inp
+            st.rerun()
 
-l, m, r = st.columns([0.6, 4, 0.8])
+# ANA SÜTUNLAR
+col_list, col_chart, col_radar = st.columns([0.7, 4, 0.8])
 
-with l:
-    st.markdown("<p class='label-mini'>LİSTE</p>", unsafe_allow_html=True)
+with col_list:
+    st.markdown("<p class='label-mini'>LİSTEM</p>", unsafe_allow_html=True)
     for f in st.session_state["favorites"]:
-        if st.button(f, key=f"f_{f}", use_container_width=True): st.session_state["last_sorgu"] = f; st.rerun()
+        if st.button(f, key=f"fav_{f}", use_container_width=True):
+            st.session_state["last_sorgu"] = f
+            st.rerun()
 
-with m:
-    df_main = yf.download(st.session_state["last_sorgu"] + ".IS", period="1mo", interval="1d", progress=False)
-    if not df_main.empty:
-        if isinstance(df_main.columns, pd.MultiIndex): df_main.columns = df_main.columns.get_level_values(0)
-        lp = df_main['Close'].iloc[-1]; ch = ((lp - df_main['Close'].iloc[-2])/df_main['Close'].iloc[-2])*100
-        
+with col_chart:
+    res = get_clean_data(st.session_state["last_sorgu"])
+    if res:
+        # Özet Kartı
         st.markdown(f"""
-        <div class='hunter-card'>
+        <div class='status-card'>
             <div style='display:flex; justify-content:space-between; align-items:center;'>
                 <div>
-                    <p class='label-mini'>{st.session_state["last_sorgu"]}</p>
-                    <span style='font-size:28px; font-weight:bold; color:#fff;'>{lp:.2f}</span>
-                    <span style='color:{"#00ff88" if ch>0 else "#ff4b4b"}; margin-left:8px; font-size:16px;'>{ch:+.2f}%</span>
+                    <span style='color:#8b949e; font-size:12px;'>{st.session_state["last_sorgu"]}</span><br>
+                    <span style='font-size:32px; font-weight:bold;'>{res['p']:.2f}</span>
+                    <span style='color:{"#00ff88" if res['ch']>0 else "#ff4b4b"}; font-size:18px; margin-left:10px;'>{res['ch']:+.2f}%</span>
                 </div>
                 <div style='text-align:right;'>
-                    <p class='label-mini'>DURUM</p>
-                    <p style='color:#ffcc00; font-weight:bold; font-size:12px;'>{"MOMENTUM OK" if ch > 0 else "BEKLEMEDE"}</p>
+                    <p class='label-mini' style='margin:0;'>DURUM</p>
+                    <p style='color:#ffcc00; font-weight:bold; font-size:14px; margin:0;'>{"MOMENTUM OK" if res['ch'] > 0 else "İZLEMEDE"}</p>
                 </div>
             </div>
         </div>
         """, unsafe_allow_html=True)
         
-        fig = go.Figure(data=[go.Candlestick(x=df_main.index, open=df_main['Open'], high=df_main['High'], low=df_main['Low'], close=df_main['Close'])])
-        fig.update_layout(height=480, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
-                          xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#0d1117', tickfont=dict(color='#30363d')),
-                          xaxis=dict(gridcolor='#0d1117', tickfont=dict(color='#30363d')))
+        # Grafik
+        fig = go.Figure(data=[go.Candlestick(x=res['df'].index, open=res['df']['Open'], high=res['df']['High'], low=res['df'].index, close=res['df']['Close'])])
+        fig.update_layout(height=500, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', 
+                          xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#161b22', tickfont=dict(color='#4b525d')),
+                          xaxis=dict(gridcolor='#161b22', tickfont=dict(color='#4b525d')))
         st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-with r:
-    st.markdown("<p class='label-mini'>🎯 RADAR</p>", unsafe_allow_html=True)
-    r_list = get_radar_data()
-    for rd in r_list:
+with col_radar:
+    st.markdown("<p class='label-mini'>RADAR</p>", unsafe_allow_html=True)
+    radar_items = get_radar_list()
+    for r in radar_items:
         st.markdown(f"""
         <div class='radar-box'>
-            <div style='display:flex; justify-content:space-between; margin-bottom:2px;'>
-                <span style='color:#ffcc00; font-size:11px; font-weight:bold;'>{rd['s']}</span>
-                <span style='color:{"#00ff88" if rd['ch']>0 else "#ff4b4b"}; font-size:10px;'>{rd['ch']:+.1f}%</span>
+            <div style='display:flex; justify-content:space-between; margin-bottom:4px;'>
+                <span style='color:#ffcc00; font-size:11px;'>{r['s']}</span>
+                <span style='color:{"#00ff88" if r['ch']>0 else "#ff4b4b"}; font-size:10px;'>{r['ch']:+.1f}%</span>
             </div>
         </div>
         """, unsafe_allow_html=True)
-        # İşte o küçülen buton patron
-        if st.button("İncele", key=f"in_{rd['s']}"):
-            st.session_state["last_sorgu"] = rd['s']; st.rerun()
+        if st.button("İncele", key=f"rad_{r['s']}"):
+            st.session_state["last_sorgu"] = r['s']
+            st.rerun()
