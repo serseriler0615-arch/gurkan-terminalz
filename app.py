@@ -4,83 +4,62 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # --- 1. SİSTEM AYARLARI ---
-st.set_page_config(page_title="Gürkan AI : Neural", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Gürkan AI : Omniscient", layout="wide", initial_sidebar_state="collapsed")
 
 if "auth" not in st.session_state: st.session_state["auth"] = False
-if "favorites" not in st.session_state: st.session_state["favorites"] = ["THYAO", "EREGL", "ISCTR", "AKBNK"]
+if "favorites" not in st.session_state: st.session_state["favorites"] = ["THYAO", "ISCTR", "EREGL", "ASTOR"]
 if "last_sorgu" not in st.session_state: st.session_state["last_sorgu"] = "THYAO"
 
-# --- 2. CSS (ELITE RESPONSIVE DESIGN) ---
+# --- 2. PREMIUM CSS (ULTRA-RESPONSIVE) ---
 st.markdown("""
 <style>
-    @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&family=JetBrains+Mono:wght@500&display=swap');
     
-    .stApp { background-color: #05070a !important; color: #e1e1e1 !important; }
+    .stApp { background-color: #030508 !important; color: #e1e1e1 !important; font-family: 'Inter', sans-serif; }
     header { visibility: hidden; }
     
-    /* Input & Buttons */
-    .stTextInput>div>div>input { 
-        background: #0d1117 !important; color: #ffcc00 !important; 
-        border: 1px solid #30363d !important; text-align: center; border-radius: 10px !important;
-        font-family: 'JetBrains Mono', monospace;
-    }
-    div.stButton > button { 
-        background: #111418 !important; color: #ffcc00 !important; 
-        border: 1px solid #30363d !important; width: 100%; border-radius: 8px;
-        transition: 0.3s; font-weight: bold;
-    }
-    div.stButton > button:hover { border-color: #ffcc00; box-shadow: 0 0 10px rgba(255,204,0,0.2); }
-
-    /* Ana Kart Yapısı */
+    /* Master Card: Görsel 1'deki Derinlik */
     .master-card {
-        background: linear-gradient(160deg, #0d1117 0%, #07090c 100%);
-        border: 1px solid #1c2128; border-radius: 16px; padding: 25px;
-        border-top: 6px solid #ffcc00; margin-bottom: 20px;
-        box-shadow: 0 25px 50px rgba(0,0,0,0.7);
+        background: linear-gradient(165deg, #0d1117 0%, #05070a 100%);
+        border: 1px solid #1c2128; border-radius: 20px; padding: 30px;
+        border-top: 4px solid #ffcc00; margin-bottom: 25px;
+        box-shadow: 0 30px 60px rgba(0,0,0,0.8);
     }
     
-    .price-text { font-size: clamp(32px, 5vw, 52px); font-weight: bold; font-family: 'JetBrains Mono', monospace; color: #fff; line-height: 1; }
-    .label-mini { color: #8b949e; font-size: 10px; text-transform: uppercase; letter-spacing: 2px; font-weight: bold; }
+    .price-text { font-size: clamp(35px, 6vw, 55px); font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #ffffff; letter-spacing: -2px; }
+    .label-mini { color: #6e7681; font-size: 10px; text-transform: uppercase; letter-spacing: 2.5px; font-weight: 700; margin-bottom: 5px; }
     
-    /* Radar Grid & Items */
-    .radar-grid { 
-        display: grid; 
-        grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); 
-        gap: 15px; margin-top: 25px; 
-    }
+    /* Radar Grid */
+    .radar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 15px; margin-top: 30px; }
     .radar-item { 
-        background: rgba(255,255,255,0.03); padding: 18px; border-radius: 12px; 
-        text-align: center; border: 1px solid #1c2128;
+        background: rgba(255,255,255,0.02); padding: 20px; border-radius: 12px; 
+        border: 1px solid #1c2128; text-align: center; transition: 0.3s;
+    }
+    .radar-item:hover { border-color: #ffcc0044; background: rgba(255,255,255,0.04); }
+
+    /* Zeka Rapor Kutusu (+) */
+    .intel-box { 
+        background: rgba(255, 204, 0, 0.03); border-radius: 15px; padding: 25px; margin-top: 30px;
+        border: 1px solid rgba(255,204,0,0.1); border-left: 6px solid #ffcc00;
+    }
+    .report-content { color: #d1d5db; font-size: 15px; line-height: 1.8; font-style: normal; }
+    .plus-badge { background: #ffcc00; color: #000; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: bold; margin-bottom: 10px; display: inline-block; }
+
+    /* Butonlar */
+    div.stButton > button { 
+        background: #0d1117 !important; color: #ffcc00 !important; border: 1px solid #30363d !important;
+        border-radius: 10px; height: 40px; font-weight: 600; font-size: 12px;
     }
     
-    /* Araştırmacı Rapor Kutusu */
-    .intel-box { 
-        background: rgba(255, 204, 0, 0.05); border-radius: 12px; padding: 22px; margin-top: 25px;
-        border: 1px solid rgba(255,204,0,0.1); border-left: 5px solid #ffcc00;
-    }
-    .report-content { color: #d1d1d1; font-size: 15px; line-height: 1.7; font-style: italic; font-family: sans-serif; }
-
-    /* Mobil Ayarı */
     @media (max-width: 600px) {
-        .master-card { padding: 15px; }
+        .price-text { font-size: 38px; }
         .radar-grid { grid-template-columns: 1fr 1fr; }
     }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. ADMIN GİRİŞİ ---
-if not st.session_state["auth"]:
-    c1, c2, c3 = st.columns([1,2,1])
-    with c2:
-        st.markdown("<div style='text-align:center; margin-top:80px;'><h1 style='color:#ffcc00; letter-spacing:8px;'>🤵 GÜRKAN AI</h1><p style='color:#4b525d;'>NEURAL STRATEGIST v204</p></div>", unsafe_allow_html=True)
-        pw = st.text_input("GİRİŞ ANALAHTARI", type="password", label_visibility="collapsed")
-        if st.button("SİSTEMİ UYANDIR"):
-            if pw == "HEDEF2024!": st.session_state["auth"] = True; st.rerun()
-            else: st.error("ERİŞİM REDDEDİLDİ.")
-    st.stop()
-
-# --- 4. NEURAL ANALİZ MOTORU (KESKİN RADAR) ---
-def get_neural_analysis(symbol):
+# --- 3. ANALİZ MOTORU (OMNISCIENT ENGINE) ---
+def get_omniscient_analysis(symbol):
     try:
         df = yf.download(symbol + ".IS", period="6mo", interval="1d", progress=False)
         if df.empty: return None
@@ -89,85 +68,96 @@ def get_neural_analysis(symbol):
         lp = float(df['Close'].iloc[-1]); pc = float(df['Close'].iloc[-2]); ch = ((lp-pc)/pc)*100
         ma20 = df['Close'].rolling(20).mean().iloc[-1]
         atr = (df['High']-df['Low']).rolling(14).mean().iloc[-1]
-        vol_r = df['Volume'].iloc[-1] / df['Volume'].rolling(10).mean().iloc[-1]
+        vol_avg = df['Volume'].rolling(10).mean().iloc[-1]
+        vol_r = df['Volume'].iloc[-1] / vol_avg
         
-        # Keskin Radar Hesaplamaları
-        target = lp + (atr * 2.5)
+        # Keskin Seviyeler
+        target = lp + (atr * 2.6)
         stop = lp - (atr * 1.6)
+        rr_ratio = (target - lp) / (lp - stop)
         
-        # Araştırmacı Zeka Motoru
-        if vol_r < 0.4:
-            sig, col = "DÜŞÜK LİKİTİDE", "#8b949e"
-            yorum = f"Analiz Sonucu: {symbol} üzerinde işlem hacmi ({vol_r:.1f}x) alarm verici düzeyde düşük. Piyasa bu fiyat seviyelerini onaylamıyor. Ciddi bir 'Likitide Tuzağı' riski var. Teknik seviyelerden ziyade hacim girişi beklenmeli."
-        elif lp > ma20 and vol_r > 1.3:
-            sig, col = "GÜÇLÜ AKÜMÜLASYON", "#00ff88"
-            yorum = f"Stratejik Rapor: Hissede kurumsal toplama (akümülasyon) emareleri var. Hacim desteği ({vol_r:.1f}x) yükselişi perçinliyor. {ma20:.2f} pivotunun üzerinde kalındığı sürece {target:.2f} teknik hedefi geçerliliğini korur."
+        # --- DERİN ARAŞTIRMACI ZEKA (PLUS) ---
+        intelligence = []
+        if ch > 0 and vol_r < 0.7:
+            status, col = "YORGUN YÜKSELİŞ", "#ff9f1c"
+            intelligence.append("Fiyat yükselirken hacmin ortalamanın altında kalması, 'Smart Money'nin bu hareketi desteklemediğini gösteriyor. Fake bir kırılım olabilir.")
+        elif lp > ma20 and vol_r > 1.5:
+            status, col = "KURUMSAL ALIM", "#00ff88"
+            intelligence.append("Yüksek hacimli pivot kırılımı tespit edildi. Trend gücü (Momentum) maksimum seviyede. Pozisyon eklemek için uygun bir zemin.")
         elif lp < ma20:
-            sig, col = "NEGATİF MOMENTUM", "#ff4b4b"
-            yorum = f"Dikkat: Ayı baskısı hakim. {ma20:.2f} pivot bölgesi sert direnç haline gelmiş durumda. Satışların hacimli olması düşüşün devam edebileceğine işaret ediyor. {stop:.2f} desteği son kale."
+            status, col = "AYI BASKISI", "#ff4b4b"
+            intelligence.append(f"Fiyat {ma20:.2f} altındaki dağıtım evresinde. Satıcılar kontrolü elinde tutuyor. Stop seviyesi olan {stop:.2f} mutlaka takip edilmeli.")
         else:
-            sig, col = "NÖTR / İZLEME", "#00d4ff"
-            yorum = f"Fiyat konsolide oluyor. Büyük oyuncuların yön kararı vermesi bekleniyor. Hacim ({vol_r:.1f}x) patlama için yetersiz. Güvenli giriş için pivot üstü hacimli kapanış aranmalı."
+            status, col = "DENGELENME", "#00d4ff"
+            intelligence.append("Hissede yön arayışı sürüyor. Pivot noktası etrafında kümelenme var, patlama yakındır.")
 
-        return {"p": lp, "ch": ch, "df": df, "ma": ma20, "target": target, "stop": stop, "yorum": yorum, "sig": sig, "col": col, "vol": vol_r}
+        if rr_ratio > 1.5: intelligence.append(f"Risk/Ödül oranı ({rr_ratio:.2f}) pozitif. Teknik olarak iştah kabartıcı.")
+        
+        return {"p": lp, "ch": ch, "df": df, "ma": ma20, "target": target, "stop": stop, "intel": intelligence, "sig": status, "col": col, "vol": vol_r}
     except: return None
 
-# --- 5. ANA TERMİNAL ---
-st.markdown("<p style='text-align:center; color:#ffcc00; letter-spacing:12px; font-weight:bold; margin-bottom:20px;'>NEURAL INTELLIGENCE TERMINAL</p>", unsafe_allow_html=True)
+# --- 4. ANA EKRAN ---
+if not st.session_state["auth"]:
+    c1, c2, c3 = st.columns([1,1.5,1])
+    with c2:
+        st.markdown("<div style='text-align:center; margin-top:100px;'><h1 style='color:#ffcc00; letter-spacing:5px;'>GÜRKAN AI</h1><p style='color:#6e7681;'>OMNISCIENT v205</p></div>", unsafe_allow_html=True)
+        pw = st.text_input("GİRİŞ", type="password", label_visibility="collapsed")
+        if st.button("SİSTEME BAĞLAN"):
+            if pw == "HEDEF2024!": st.session_state["auth"] = True; st.rerun()
+    st.stop()
 
-# Smart Control Bar
+st.markdown("<p style='text-align:center; color:#ffcc00; letter-spacing:10px; font-size:12px; font-weight:bold;'>STRATEJİK İSTİHBARAT TERMİNALİ</p>", unsafe_allow_html=True)
+
+# Arama Barı
 c1, c2, c3 = st.columns([3, 1, 1])
 with c1: s_inp = st.text_input("", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper().strip()
 with c2: 
-    if st.button("🔍 SORGULA"): st.session_state["last_sorgu"] = s_inp; st.rerun()
+    if st.button("🔍 ANALİZ"): st.session_state["last_sorgu"] = s_inp; st.rerun()
 with c3:
-    fav_text = "❌ SİL" if s_inp in st.session_state["favorites"] else "⭐ EKLE"
-    if st.button(fav_text):
+    if st.button("⭐ FAVORİ"):
         if s_inp in st.session_state["favorites"]: st.session_state["favorites"].remove(s_inp)
         else: st.session_state["favorites"].append(s_inp)
         st.rerun()
 
-# Favori Radar Barı
-if st.session_state["favorites"]:
-    f_cols = st.columns(len(st.session_state["favorites"]))
-    for i, f in enumerate(st.session_state["favorites"]):
-        if f_cols[i].button(f): st.session_state["last_sorgu"] = f; st.rerun()
+# Favori Barı
+f_cols = st.columns(len(st.session_state["favorites"]) if st.session_state["favorites"] else 1)
+for i, f in enumerate(st.session_state["favorites"]):
+    if f_cols[i].button(f): st.session_state["last_sorgu"] = f; st.rerun()
 
-# Analiz Dashboard
-res = get_neural_analysis(st.session_state["last_sorgu"])
+# Dashboard
+res = get_omniscient_analysis(st.session_state["last_sorgu"])
 if res:
     st.markdown(f"""
     <div class='master-card'>
         <div style='display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap;'>
             <div>
-                <span class='label-mini'>{st.session_state["last_sorgu"]} // ANALİZ MERKEZİ</span><br>
+                <p class='label-mini'>{st.session_state["last_sorgu"]} ANALİZİ</p>
                 <span class='price-text'>{res['p']:.2f}</span>
-                <span style='color:{"#00ff88" if res['ch']>0 else "#ff4b4b"}; font-size:24px; font-weight:bold;'> {res['ch']:+.2f}%</span>
+                <span style='color:{"#00ff88" if res['ch']>0 else "#ff4b4b"}; font-size:26px; font-weight:700; margin-left:10px;'>{res['ch']:+.2f}%</span>
             </div>
             <div style='text-align:right;'>
-                <span style='color:{res['col']}; font-weight:bold; font-size:20px; letter-spacing:1px;'>{res['sig']}</span><br>
+                <span style='color:{res['col']}; font-weight:bold; font-size:20px;'>{res['sig']}</span><br>
                 <span class='label-mini'>HACİM GÜCÜ: {res['vol']:.1f}x</span>
             </div>
         </div>
         
         <div class='radar-grid'>
-            <div class='radar-item'><p class='label-mini'>PİVOT (MA20)</p><p style='font-size:24px; font-weight:bold; color:#8b949e;'>{res['ma']:.2f}</p></div>
-            <div class='radar-item' style='border-bottom: 4px solid #00ff88;'><p class='label-mini'>POZİTİF HEDEF</p><p style='font-size:24px; font-weight:bold; color:#00ff88;'>{res['target']:.2f}</p></div>
-            <div class='radar-item' style='border-bottom: 4px solid #ff4b4b;'><p class='label-mini'>KRİTİK STOP</p><p style='font-size:24px; font-weight:bold; color:#ff4b4b;'>{res['stop']:.2f}</p></div>
+            <div class='radar-item'><p class='label-mini'>PİVOT (20G)</p><p style='font-size:24px; font-weight:bold;'>{res['ma']:.2f}</p></div>
+            <div class='radar-item'><p class='label-mini' style='color:#00ff88;'>TEKNİK HEDEF</p><p style='font-size:24px; font-weight:bold; color:#00ff88;'>{res['target']:.2f}</p></div>
+            <div class='radar-item'><p class='label-mini' style='color:#ff4b4b;'>STOP LOSS</p><p style='font-size:24px; font-weight:bold; color:#ff4b4b;'>{res['stop']:.2f}</p></div>
         </div>
         
         <div class='intel-box'>
-            <p class='label-mini' style='color:#ffcc00; margin-bottom:12px;'>🕵️ ARAŞTIRMACI STRATEJİ RAPORU (+)</p>
-            <p class='report-content'>"{res['yorum']}"</p>
+            <span class='plus-badge'>GÜRKAN AI RESEARCH (+)</span>
+            <p class='report-content'>{' '.join(res['intel'])}</p>
         </div>
     </div>
     """, unsafe_allow_html=True)
     
-    # Pro Grafik
     fig = go.Figure(data=[go.Candlestick(x=res['df'].index, open=res['df']['Open'], high=res['df']['High'], low=res['df']['Low'], close=res['df']['Close'])])
-    fig.update_layout(height=450, margin=dict(l=0,r=0,t=10,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#161b22', tickfont=dict(color='#4b525d')))
+    fig.update_layout(height=450, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#1c2128', tickfont=dict(color='#484f58')))
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
 
-if st.sidebar.button("TERMİNALİ KAPAT"):
+if st.sidebar.button("OTURUMU SONLANDIR"):
     st.session_state["auth"] = False
     st.rerun()
