@@ -3,14 +3,14 @@ import yfinance as yf
 import pandas as pd
 import plotly.graph_objects as go
 
-# --- 1. SİSTEM AYARLARI ---
-st.set_page_config(page_title="Gürkan AI : Oracle", layout="wide", initial_sidebar_state="collapsed")
+# --- 1. SİSTEM & GÜVENLİK ---
+st.set_page_config(page_title="Gürkan AI : Absolute Zero", layout="wide", initial_sidebar_state="collapsed")
 
 if "auth" not in st.session_state: st.session_state["auth"] = False
 if "favorites" not in st.session_state: st.session_state["favorites"] = ["THYAO", "ISCTR", "EREGL", "TUPRS"]
 if "last_sorgu" not in st.session_state: st.session_state["last_sorgu"] = "THYAO"
 
-# --- 2. ELITE ORACLE CSS (CAM EFEKTLİ & KESKİN) ---
+# --- 2. ABSOLUTE ZERO CSS (KESKİN & PROFESYONEL) ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap');
@@ -18,37 +18,31 @@ st.markdown("""
     header { visibility: hidden; }
     
     .master-card {
-        background: linear-gradient(145deg, #0d1117 0%, #05070a 100%);
-        border: 1px solid #1c2128; border-radius: 24px; padding: 35px;
-        border-top: 5px solid #ffcc00; margin-bottom: 25px;
-        box-shadow: 0 50px 100px rgba(0,0,0,0.9);
+        background: #0d1117; border: 1px solid #30363d; border-radius: 20px; padding: 35px;
+        border-top: 6px solid #ffcc00; margin-bottom: 25px; box-shadow: 0 50px 100px rgba(0,0,0,0.5);
     }
-    .price-text { font-size: clamp(40px, 7vw, 62px); font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #ffffff; letter-spacing: -3px; }
-    .label-mini { color: #484f58; font-size: 10px; text-transform: uppercase; letter-spacing: 4px; font-weight: 800; }
+    .price-text { font-size: 60px; font-weight: 700; font-family: 'JetBrains Mono', monospace; color: #ffffff; letter-spacing: -2px; }
+    .label-mini { color: #8b949e; font-size: 11px; text-transform: uppercase; letter-spacing: 3px; font-weight: 800; }
     
-    .radar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 20px; margin-top: 30px; }
-    .radar-item { 
-        background: rgba(255,255,255,0.01); padding: 25px; border-radius: 18px; 
-        border: 1px solid #1c2128; text-align: center; transition: all 0.4s ease;
-    }
-    .radar-item:hover { background: rgba(255,204,0,0.02); border-color: #ffcc0044; transform: translateY(-5px); }
+    /* Radar Grid: Artık daha ferah */
+    .radar-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 20px; margin-top: 30px; }
+    .radar-item { background: #161b22; padding: 25px; border-radius: 15px; border: 1px solid #30363d; text-align: center; }
     
+    /* Araştırmacı Rapor Kutusu */
     .intel-box { 
-        background: rgba(255, 204, 0, 0.02); border-radius: 20px; padding: 30px; margin-top: 30px;
-        border-left: 8px solid #ffcc00; border-right: 1px solid #1c2128;
+        background: rgba(255, 204, 0, 0.03); border-radius: 15px; padding: 25px; margin-top: 30px;
+        border-left: 8px solid #ffcc00; border: 1px solid #30363d; border-left: 8px solid #ffcc00;
     }
-    .plus-badge { background: #ffcc00; color: #000; padding: 4px 12px; border-radius: 6px; font-size: 12px; font-weight: 900; margin-bottom: 15px; display: inline-block; }
-    .report-content { color: #d1d5db; font-size: 16px; line-height: 1.9; font-family: 'Inter', sans-serif; }
+    .plus-badge { background: #ffcc00; color: #000; padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 900; margin-bottom: 12px; display: inline-block; }
+    .report-content { color: #d1d5db; font-size: 16px; line-height: 1.8; }
 
-    div.stButton > button { background: #0d1117 !important; color: #ffcc00 !important; border: 1px solid #30363d !important; border-radius: 12px; height: 45px; font-weight: 700; }
-    .stTextInput>div>div>input { background: #0d1117 !important; color: #ffcc00 !important; border: 1px solid #30363d !important; border-radius: 10px !important; text-align: center; }
-
-    @media (max-width: 600px) { .radar-grid { grid-template-columns: 1fr 1fr; } .master-card { padding: 20px; } }
+    div.stButton > button { background: #21262d !important; color: #ffcc00 !important; border: 1px solid #30363d !important; border-radius: 10px; height: 45px; font-weight: 700; }
+    .stTextInput>div>div>input { background: #0d1117 !important; color: #ffcc00 !important; border: 1px solid #30363d !important; text-align: center; }
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. ORACLE ANALİZ MOTORU ---
-def get_oracle_analysis(symbol):
+# --- 3. MEKANİK ANALİZ MOTORU (SIFIR HATA) ---
+def get_absolute_zero_analysis(symbol):
     try:
         df = yf.download(symbol + ".IS", period="6mo", interval="1d", progress=False)
         if df.empty: return None
@@ -58,27 +52,29 @@ def get_oracle_analysis(symbol):
         ma20 = df['Close'].rolling(20).mean().iloc[-1]
         atr = (df['High']-df['Low']).rolling(14).mean().iloc[-1]
         vol_r = df['Volume'].iloc[-1] / df['Volume'].rolling(10).mean().iloc[-1]
-        low_20 = df['Low'].rolling(20).min().iloc[-1] # Son 20 günün dibi
         
-        # --- STRATEJİK HESAPLAMA ---
-        target = lp + (atr * 2.7)
-        # Stop, pivotun %4 altı ile son 20 günün dibi arasındaki en güvenli noktadır.
-        stop = min(ma20 * 0.96, low_20 * 0.99)
+        # --- MEKANİK HESAPLAMA ---
+        target = lp + (atr * 3.0) # Hedef marjı genişletildi
         
-        # --- DERİN ZEKA (+) ---
+        # STOP: Pivotun %5 altı veya ATR*2.5 marjından en uzağı (Güvenlik Odaklı)
+        safe_stop = ma20 * 0.95
+        atr_stop = lp - (atr * 2.5)
+        stop = min(safe_stop, atr_stop)
+        
+        # --- KESKİN ZEKA MOTORU ---
         intel = []
-        if vol_r < 0.5:
-            sig, col = "İLGİ KAYBI / ZAYIF", "#484f58"
-            intel.append(f"Araştırma Notu: {symbol} şu an kurumsal radardan çıkmış durumda. Hacim rasyosu ({vol_r:.1f}x) teknik formasyonları 'aldatıcı' kılabilir. {ma20:.2f} pivotu üzerinde olsa dahi aksiyon için hacim onayı şart.")
-        elif lp > ma20 and 0.8 <= vol_r <= 1.2:
-            sig, col = "SESSİZ AKÜMÜLASYON", "#00d4ff"
-            intel.append(f"Stratejik Tespit: Fiyat {ma20:.2f} pivotunda 'dip çalışması' yapıyor. Hacmin stabil kalması, büyük oyuncuların sessizce pozisyon biriktirdiğine (Accumulation) işaret edebilir. {target:.2f} hedefi için enerji toplanıyor.")
-        elif lp > ma20 and vol_r > 1.5:
-            sig, col = "AGRESİF ALIM", "#00ff88"
-            intel.append(f"Sinyal Onayı: Hacimli kopuş başladı! {lp:.2f} seviyesindeki güç, {target:.2f} hedefine giden yolu temizliyor. Trend takibi (Trend Following) stratejisi uygun.")
+        if vol_r < 0.8:
+            sig, col = "HACİM ONAYI YOK", "#8b949e"
+            intel.append(f"KRİTİK UYARI: {symbol} üzerinde işlem hacmi yetersiz ({vol_r:.1f}x). Fiyatın {ma20:.2f} pivotu üzerinde olması 'fake' bir harekettir. Hacim rasyosu 1.5x üzerine çıkmadan pozisyon almak likidite tuzağı yaratabilir.")
+        elif lp > ma20 and vol_r >= 1.2:
+            sig, col = "GÜÇLÜ TREND", "#00ff88"
+            intel.append(f"STRATEJİ: Trend onayı alındı. Hacimli bir şekilde pivotun üzerinde kalıcılık sağlanıyor. {target:.2f} hedefi masada, {stop:.2f} seviyesi ana savunma hattı olarak güncellendi.")
+        elif lp < ma20:
+            sig, col = "AYI BASKISI", "#ff4b4b"
+            intel.append(f"DİKKAT: Ayı piyasası hakimiyeti sürüyor. Fiyat {ma20:.2f} altında kaldığı sürece her yükseliş 'satış fırsatı' olarak görülecektir. Güvenli bölgeye dönüş için pivot üstü kapanış şart.")
         else:
-            sig, col = "RİSKLİ BÖLGE", "#ff4b4b"
-            intel.append(f"Ayı Baskısı: Fiyat pivot altında dağıtım (Distribution) evresinde. {stop:.2f} desteği kırılırsa satış derinleşebilir.")
+            sig, col = "BELİRSİZLİK", "#ffcc00"
+            intel.append(f"ANALİZ: Fiyat kararsız bölgede. {ma20:.2f} pivot noktası etrafında testere piyasası (Chop) hakim. Net bir hacim girişi görülene kadar izlemede kalınmalı.")
 
         return {"p": lp, "ch": ch, "df": df, "ma": ma20, "target": target, "stop": stop, "intel": " ".join(intel), "sig": sig, "col": col, "vol": vol_r}
     except: return None
@@ -87,37 +83,39 @@ def get_oracle_analysis(symbol):
 if not st.session_state["auth"]:
     c1, c2, c3 = st.columns([1,1.5,1])
     with c2:
-        st.markdown("<div style='text-align:center; margin-top:100px;'><h1 style='color:#ffcc00; letter-spacing:5px;'>GÜRKAN AI</h1><p style='font-size:10px; color:#484f58;'>ELITE ORACLE v208</p></div>", unsafe_allow_html=True)
-        pw = st.text_input("GİRİŞ ANAHTARI", type="password", label_visibility="collapsed")
-        if st.button("TERMİNALİ UYANDIR"):
+        st.markdown("<div style='text-align:center; margin-top:100px;'><h1 style='color:#ffcc00;'>🤵 GÜRKAN AI</h1><p style='color:#8b949e;'>ABSOLUTE ZERO v209</p></div>", unsafe_allow_html=True)
+        pw = st.text_input("ŞİFRE", type="password", label_visibility="collapsed")
+        if st.button("TERMİNALİ AÇ"):
             if pw == "HEDEF2024!": st.session_state["auth"] = True; st.rerun()
     st.stop()
 
-# Dashboard UI
-st.markdown("<p style='text-align:center; color:#ffcc00; letter-spacing:12px; font-weight:bold; font-size:13px;'>ELITE RESEARCH TERMINAL</p>", unsafe_allow_html=True)
+# Üst Bar
+st.markdown("<p style='text-align:center; color:#ffcc00; letter-spacing:12px; font-weight:bold; font-size:12px;'>STRATEJİK ARAŞTIRMA MERKEZİ (+)</p>", unsafe_allow_html=True)
 
+# Sorgu
 c1, c2, c3 = st.columns([3, 1, 1])
 with c1: s_inp = st.text_input("", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper().strip()
 with c2: 
-    if st.button("🔍 ANALİZ ET"): st.session_state["last_sorgu"] = s_inp; st.rerun()
+    if st.button("🔍 SORGULA"): st.session_state["last_sorgu"] = s_inp; st.rerun()
 with c3:
     if st.button("⭐ FAVORİ"):
         if s_inp in st.session_state["favorites"]: st.session_state["favorites"].remove(s_inp)
         else: st.session_state["favorites"].append(s_inp)
         st.rerun()
 
-# Favori Barı
+# Favoriler
 f_cols = st.columns(len(st.session_state["favorites"]) if st.session_state["favorites"] else 1)
 for i, f in enumerate(st.session_state["favorites"]):
     if f_cols[i].button(f): st.session_state["last_sorgu"] = f; st.rerun()
 
-res = get_oracle_analysis(st.session_state["last_sorgu"])
+# Dashboard
+res = get_absolute_zero_analysis(st.session_state["last_sorgu"])
 if res:
     st.markdown(f"""
     <div class='master-card'>
         <div style='display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap;'>
             <div>
-                <p class='label-mini'>{st.session_state["last_sorgu"]} // ORACLE CORE</p>
+                <p class='label-mini'>{st.session_state["last_sorgu"]} // TERMINAL CORE</p>
                 <span class='price-text'>{res['p']:.2f}</span>
                 <span style='color:{"#00ff88" if res['ch']>0 else "#ff4b4b"}; font-size:28px; font-weight:700;'> {res['ch']:+.2f}%</span>
             </div>
@@ -129,8 +127,8 @@ if res:
         
         <div class='radar-grid'>
             <div class='radar-item'><p class='label-mini'>PİVOT (MA20)</p><p style='font-size:26px; font-weight:bold; color:#8b949e;'>{res['ma']:.2f}</p></div>
-            <div class='radar-item' style='border-bottom: 5px solid #00ff88;'><p class='label-mini'>TARGET (PRO)</p><p style='font-size:26px; font-weight:bold; color:#00ff88;'>{res['target']:.2f}</p></div>
-            <div class='radar-item' style='border-bottom: 5px solid #ff4b4b;'><p class='label-mini'>SAFEZONE STOP</p><p style='font-size:26px; font-weight:bold; color:#ff4b4b;'>{res['stop']:.2f}</p></div>
+            <div class='radar-item' style='border-bottom: 5px solid #00ff88;'><p class='label-mini'>PRO TARGET (+)</p><p style='font-size:26px; font-weight:bold; color:#00ff88;'>{res['target']:.2f}</p></div>
+            <div class='radar-item' style='border-bottom: 5px solid #ff4b4b;'><p class='label-mini'>SAFE STOP LOSS</p><p style='font-size:26px; font-weight:bold; color:#ff4b4b;'>{res['stop']:.2f}</p></div>
         </div>
         
         <div class='intel-box'>
