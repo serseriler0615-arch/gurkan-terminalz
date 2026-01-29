@@ -4,13 +4,13 @@ import pandas as pd
 import plotly.graph_objects as go
 
 # --- 1. SİSTEM & GÜVENLİK ---
-st.set_page_config(page_title="Gürkan AI : Quantum", layout="wide", initial_sidebar_state="collapsed")
+st.set_page_config(page_title="Gürkan AI : Deep Mind", layout="wide", initial_sidebar_state="collapsed")
 
 if "auth" not in st.session_state: st.session_state["auth"] = False
 if "favorites" not in st.session_state: st.session_state["favorites"] = ["THYAO", "ISCTR", "EREGL", "TUPRS"]
 if "last_sorgu" not in st.session_state: st.session_state["last_sorgu"] = "THYAO"
 
-# --- 2. ELITE QUANTUM CSS ---
+# --- 2. ELITE PREMIUM CSS ---
 st.markdown("""
 <style>
     @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@500;700&display=swap');
@@ -43,8 +43,8 @@ st.markdown("""
 </style>
 """, unsafe_allow_html=True)
 
-# --- 3. QUANTUM ANALİZ MOTORU ---
-def get_quantum_analysis(symbol):
+# --- 3. DEEP MIND ANALİZ MOTORU ---
+def get_deep_analysis(symbol):
     try:
         df = yf.download(symbol + ".IS", period="6mo", interval="1d", progress=False)
         if df.empty: return None
@@ -55,27 +55,31 @@ def get_quantum_analysis(symbol):
         atr = (df['High']-df['Low']).rolling(14).mean().iloc[-1]
         vol_r = df['Volume'].iloc[-1] / df['Volume'].rolling(10).mean().iloc[-1]
         
-        # --- KESKİN HESAPLAMA: SAFE-ZONE ---
-        target = lp + (atr * 2.8)
-        stop = lp - (atr * 1.9) # Stop mesafesi daha profesyonel bir marja çekildi.
-        rr_ratio = (target - lp) / (lp - stop)
+        # --- MANTIKSAL DÜZELTME: AKILLI STOP & HEDEF ---
+        # Stop, her zaman Pivot ve Fiyatın altında, hissenin volatilitesine göre en az %2-3 marjlı olmalı.
+        target = lp + (atr * 2.5)
+        raw_stop = lp - (atr * 2.0)
+        safe_margin = ma20 * 0.97 # Pivotun %3 altı (Güvenlik Tamponu)
+        stop = min(raw_stop, safe_margin) # Hangisi daha güvenliyse onu seçer
+        
+        rr_ratio = (target - lp) / (lp - stop) if (lp - stop) != 0 else 0
         
         # --- ZEKA KATMANI ---
         intel = []
         if vol_r < 0.6:
             sig, col = "LİKİTİDE EKSİKLİĞİ", "#6e7681"
-            intel.append(f"Piyasada {symbol} için ilgi kaybı (Volume Decay) mevcut. Hacim rasyosu ({vol_r:.1f}x) teknik formasyonları geçersiz kılabilir. Patlama beklemek yerine, kurumsal giriş onayı aranmalı.")
-        elif lp > ma20 and vol_r > 1.4:
-            sig, col = "HACİMLİ TREND", "#00ff88"
-            intel.append(f"Sinyal Onaylandı: {ma20:.2f} pivotu üzerinde hacimli bir kopuş mevcut. Alıcı iştahı (Buy Pressure) yüksek. {target:.2f} seviyesine kadar ivme sürebilir.")
+            intel.append(f"Hissede hacim kaybı mevcut ({vol_r:.1f}x). Kurumsal ilgi gelmedikçe teknik kırılımlar zayıf kalacaktır.")
+        elif lp > ma20 and vol_r >= 1.0:
+            sig, col = "POZİTİF GÜÇ TOPLAMA", "#00ff88"
+            intel.append(f"Fiyat {ma20:.2f} pivotunun üzerinde tutunuyor. Hacim ortalama seviyede ({vol_r:.1f}x), bu durum sağlıklı bir 'taban oluşumu'na işaret eder. {target:.2f} ana direnç radarda.")
         elif lp < ma20:
-            sig, col = "AYI DOMİNASYONU", "#ff4b4b"
-            intel.append(f"Pivot altı kapanışlar zayıflığı teyit ediyor. {ma20:.2f} direnci aşılamadıkça risk masada. {stop:.2f} bölgesi ana savunma hattıdır.")
+            sig, col = "SATICILI SEYİR", "#ff4b4b"
+            intel.append(f"Pivot altı kapanışlar zayıflığı teyit ediyor. {stop:.2f} bölgesi ana savunma hattıdır.")
         else:
-            sig, col = "DARALAN VOLATİLİTE", "#ffcc00"
-            intel.append(f"Fiyat {ma20:.2f} pivotu etrafında yatayda (Squeeze). Enerji birikimi mevcut; ancak hacim girişi ({vol_r:.1f}x) henüz yön teyidi vermedi.")
+            sig, col = "DARALAN KANAL", "#ffcc00"
+            intel.append(f"Fiyat {ma20:.2f} pivotu etrafında yatayda. Hacim girişi bekleniyor.")
 
-        if rr_ratio > 1.4: intel.append(f"Risk/Ödül Oranı ({rr_ratio:.2f}) 'Yüksek Verimli' sınıfında.")
+        if rr_ratio > 1.3: intel.append(f"Risk/Ödül Oranı ({rr_ratio:.2f}) teknik iştahı destekliyor.")
 
         return {"p": lp, "ch": ch, "df": df, "ma": ma20, "target": target, "stop": stop, "intel": " ".join(intel), "sig": sig, "col": col, "vol": vol_r}
     except: return None
@@ -90,10 +94,8 @@ if not st.session_state["auth"]:
             if pw == "HEDEF2024!": st.session_state["auth"] = True; st.rerun()
     st.stop()
 
-# Üst Bar
-st.markdown("<p style='text-align:center; color:#ffcc00; letter-spacing:10px; font-weight:bold; font-size:12px;'>QUANTUM RESEARCH TERMINAL</p>", unsafe_allow_html=True)
+st.markdown("<p style='text-align:center; color:#ffcc00; letter-spacing:10px; font-weight:bold; font-size:12px;'>DEEP MIND RESEARCH TERMINAL</p>", unsafe_allow_html=True)
 
-# Kontrol
 c1, c2, c3 = st.columns([3, 1, 1])
 with c1: s_inp = st.text_input("", value=st.session_state["last_sorgu"], label_visibility="collapsed").upper().strip()
 with c2: 
@@ -109,31 +111,30 @@ f_cols = st.columns(len(st.session_state["favorites"]) if st.session_state["favo
 for i, f in enumerate(st.session_state["favorites"]):
     if f_cols[i].button(f): st.session_state["last_sorgu"] = f; st.rerun()
 
-# Analiz Raporu
-res = get_quantum_analysis(st.session_state["last_sorgu"])
+res = get_deep_analysis(st.session_state["last_sorgu"])
 if res:
     st.markdown(f"""
     <div class='master-card'>
         <div style='display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap;'>
             <div>
-                <p class='label-mini'>{st.session_state["last_sorgu"]} // QUANTUM CORE</p>
+                <p class='label-mini'>{st.session_state["last_sorgu"]} // ANALİZ</p>
                 <span class='price-text'>{res['p']:.2f}</span>
                 <span style='color:{"#00ff88" if res['ch']>0 else "#ff4b4b"}; font-size:26px; font-weight:700;'> {res['ch']:+.2f}%</span>
             </div>
             <div style='text-align:right;'>
                 <span style='color:{res['col']}; font-weight:bold; font-size:20px;'>{res['sig']}</span><br>
-                <span class='label-mini'>INTENSITY: {res['vol']:.1f}x</span>
+                <span class='label-mini'>GÜÇ ENDEKSİ: {res['vol']:.1f}x</span>
             </div>
         </div>
         
         <div class='radar-grid'>
             <div class='radar-item'><p class='label-mini'>PİVOT (MA20)</p><p style='font-size:24px; font-weight:bold; color:#8b949e;'>{res['ma']:.2f}</p></div>
             <div class='radar-item' style='border-bottom: 4px solid #00ff88;'><p class='label-mini'>HEDEF (PRO)</p><p style='font-size:24px; font-weight:bold; color:#00ff88;'>{res['target']:.2f}</p></div>
-            <div class='radar-item' style='border-bottom: 4px solid #ff4b4b;'><p class='label-mini'>STOP (SAFE)</p><p style='font-size:24px; font-weight:bold; color:#ff4b4b;'>{res['stop']:.2f}</p></div>
+            <div class='radar-item' style='border-bottom: 4px solid #ff4b4b;'><p class='label-mini'>STOP (SAFEZONE)</p><p style='font-size:24px; font-weight:bold; color:#ff4b4b;'>{res['stop']:.2f}</p></div>
         </div>
         
         <div class='intel-box'>
-            <span class='plus-badge'>GÜRKAN AI STRATEGY (+)</span>
+            <span class='plus-badge'>GÜRKAN AI RESEARCH (+)</span>
             <p class='report-content'>"{res['intel']}"</p>
         </div>
     </div>
@@ -142,7 +143,3 @@ if res:
     fig = go.Figure(data=[go.Candlestick(x=res['df'].index, open=res['df']['Open'], high=res['df']['High'], low=res['df']['Low'], close=res['df']['Close'])])
     fig.update_layout(height=450, margin=dict(l=0,r=0,t=0,b=0), paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', xaxis_rangeslider_visible=False, yaxis=dict(side='right', gridcolor='#1c2128', tickfont=dict(color='#484f58')))
     st.plotly_chart(fig, use_container_width=True, config={'displayModeBar': False})
-
-if st.sidebar.button("OTURUMU KAPAT"):
-    st.session_state["auth"] = False
-    st.rerun()
