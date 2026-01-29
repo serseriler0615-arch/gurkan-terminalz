@@ -140,4 +140,4 @@ if res:
 
 if st.sidebar.button("OTURUMU KAPAT"):
     st.session_state["auth"] = False
-    st.rerun()
+    st.rerun()z
